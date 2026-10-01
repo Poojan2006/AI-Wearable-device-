@@ -1,0 +1,43 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'supervisor')",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "workers": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'supervisor'",
+      "$workerId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('workerId').val() === $workerId || root.child('users').child(auth.uid).child('role').val() === 'supervisor')",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('workerId').val() === $workerId || root.child('users').child(auth.uid).child('role').val() === 'supervisor')"
+      }
+    },
+    "telemetry": {
+      "$workerId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('workerId').val() === $workerId || root.child('users').child(auth.uid).child('role').val() === 'supervisor')",
+        "latest": {
+          ".write": "auth != null && (root.child('users').child(auth.uid).child('workerId').val() === $workerId || root.child('users').child(auth.uid).child('role').val() === 'supervisor')"
+        },
+        "history": {
+          "$eventId": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('workerId').val() === $workerId || root.child('users').child(auth.uid).child('role').val() === 'supervisor')"
+          }
+        }
+      }
+    },
+    "alerts": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'supervisor'",
+      "$alertId": {
+        ".read": "auth != null && (data.child('workerId').val() === root.child('users').child(auth.uid).child('workerId').val() || root.child('users').child(auth.uid).child('role').val() === 'supervisor')",
+        ".write": "auth != null && (newData.child('workerId').val() === root.child('users').child(auth.uid).child('workerId').val() || root.child('users').child(auth.uid).child('role').val() === 'supervisor')"
+      }
+    },
+    "devices": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
