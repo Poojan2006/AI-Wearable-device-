@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "909125349437",
+    "firebase_url": "https://worker-safety-system-9798a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "worker-safety-system-9798a",
+    "storage_bucket": "worker-safety-system-9798a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:909125349437:android:9f5bb2400b58bb79cd7a54",
+        "android_client_info": {
+          "package_name": "com.workersafety.worker_safety_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1BX_6wPmsubztJNO9ds_gcdCEjG3bf3Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

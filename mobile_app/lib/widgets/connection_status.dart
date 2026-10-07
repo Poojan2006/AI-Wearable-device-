@@ -17,47 +17,58 @@ class ConnectionStatusWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF334155)),
+        color: const Color(0xFF0D131F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1E2B3E), width: 1),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // 1. Bluetooth Status
-          InkWell(
-            onTap: onBleTap,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: _buildIndicator(
-                icon: Icons.bluetooth_rounded,
-                label: 'Bluetooth',
-                status: isBleConnected ? 'CONNECTED' : 'DISCONNECTED',
-                isPositive: isBleConnected,
+          Expanded(
+            child: InkWell(
+              onTap: onBleTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                child: _buildIndicator(
+                  icon: Icons.bluetooth_rounded,
+                  label: 'BLE LINK',
+                  status: isBleConnected ? 'CONNECTED' : 'OFFLINE',
+                  isPositive: isBleConnected,
+                ),
               ),
             ),
           ),
-          Container(width: 1, height: 28, color: const Color(0xFF334155)),
+          Container(width: 1, height: 24, color: const Color(0xFF1E2B3E)),
 
           // 2. Internet Status
-          _buildIndicator(
-            icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-            label: 'Internet',
-            status: isOnline ? 'ONLINE' : 'OFFLINE',
-            isPositive: isOnline,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _buildIndicator(
+                icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+                label: 'NETWORK',
+                status: isOnline ? 'ONLINE' : 'LOCAL ONLY',
+                isPositive: isOnline,
+              ),
+            ),
           ),
-          Container(width: 1, height: 28, color: const Color(0xFF334155)),
+          Container(width: 1, height: 24, color: const Color(0xFF1E2B3E)),
 
           // 3. Cloud Sync Queue Status
-          _buildIndicator(
-            icon: Icons.cloud_sync_rounded,
-            label: 'Cloud Sync',
-            status: pendingSyncCount == 0 ? 'SYNCED' : '$pendingSyncCount PENDING',
-            isPositive: pendingSyncCount == 0,
-            customWarning: pendingSyncCount > 0,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: _buildIndicator(
+                icon: Icons.sync_rounded,
+                label: 'CLOUD SYNC',
+                status: pendingSyncCount == 0 ? 'SYNCED' : '$pendingSyncCount QUEUED',
+                isPositive: pendingSyncCount == 0,
+                customWarning: pendingSyncCount > 0,
+              ),
+            ),
           ),
         ],
       ),
@@ -113,14 +124,18 @@ class ConnectionStatusWidget extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 5),
-            Text(
-              status,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: dotColor,
-                letterSpacing: 0.4,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                status,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: dotColor,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],

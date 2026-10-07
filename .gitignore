@@ -12,9 +12,11 @@ mobile_app/.packages
 mobile_app/.pub-cache/
 mobile_app/.pub/
 
-# OS and IDE
-.DS_Store
-.idea/
-.vscode/
-*.swp
-*.lock
+# Binaries and logs
+*.apk
+*.log
+firebase-debug.log
+mobile_app/android/build/
+*.png
+!mobile_app/assets/**
+!mobile_app/android/app/src/main/res/**

@@ -92,15 +92,20 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
                               margin: const EdgeInsets.symmetric(vertical: 4),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFF334155)),
+                                color: const Color(0xFF131D33),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: item.synced
+                                      ? const Color(0xFF243350)
+                                      : const Color(0xFFF59E0B).withAlpha(80),
+                                  width: 1,
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 8,
-                                    height: 48,
+                                    width: 4,
+                                    height: 42,
                                     decoration: BoxDecoration(
                                       color: item.synced
                                           ? const Color(0xFF10B981)
@@ -121,18 +126,24 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 12,
-                                                fontWeight: FontWeight.w700,
+                                                fontWeight: FontWeight.w800,
                                               ),
                                             ),
                                             Container(
                                               padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
+                                                  horizontal: 7, vertical: 2),
                                               decoration: BoxDecoration(
                                                 color: (item.synced
                                                         ? const Color(0xFF10B981)
                                                         : const Color(0xFFF59E0B))
-                                                    .withAlpha(38),
-                                                borderRadius: BorderRadius.circular(4),
+                                                    .withAlpha(25),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: (item.synced
+                                                          ? const Color(0xFF10B981)
+                                                          : const Color(0xFFF59E0B))
+                                                      .withAlpha(60),
+                                                ),
                                               ),
                                               child: Text(
                                                 item.synced ? "CLOUD SYNCED" : "OFFLINE QUEUED",
@@ -141,7 +152,8 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
                                                       ? const Color(0xFF10B981)
                                                       : const Color(0xFFF59E0B),
                                                   fontSize: 9,
-                                                  fontWeight: FontWeight.w800,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 0.3,
                                                 ),
                                               ),
                                             ),
@@ -153,6 +165,7 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
                                           style: const TextStyle(
                                             color: Color(0xFF94A3B8),
                                             fontSize: 11,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                       ],
@@ -172,12 +185,30 @@ class _WorkerHistoryScreenState extends State<WorkerHistoryScreen> {
 
   Widget _buildFilterChip(String value, String label) {
     final isSelected = _filter == value;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      selected: isSelected,
-      onSelected: (val) {
-        if (val) setState(() => _filter = value);
-      },
+    final activeColor = value == 'UNSYNCED' ? const Color(0xFFF59E0B) : const Color(0xFF6366F1);
+
+    return InkWell(
+      onTap: () => setState(() => _filter = value),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withAlpha(35) : const Color(0xFF131D33),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? activeColor : const Color(0xFF243350),
+            width: isSelected ? 1.4 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -18,12 +18,20 @@ class AiPredictionService {
     if (telemetry.motionStatus == 'REST') motionVal = 0.0;
     if (telemetry.motionStatus == 'SHOCK') motionVal = 2.0;
 
+    // If a sensor is not connected (value 0), substitute nominal baseline
+    // so the classifier evaluates the sensors that ARE physically connected (MPU6050, DHT, SOS)
+    final double safeTemp = telemetry.temperature > 0 ? telemetry.temperature : 26.5;
+    final double safeHeart = telemetry.heartRate > 0 ? telemetry.heartRate.toDouble() : 75.0;
+    final double safeSpO2 = telemetry.spo2 > 0 ? telemetry.spo2.toDouble() : 98.0;
+    final double safeGas = telemetry.gasLevel > 0 ? telemetry.gasLevel.toDouble() : 45.0;
+    final double safeHumidity = telemetry.humidity > 0 ? telemetry.humidity : 50.0;
+
     final List<double> features = [
-      telemetry.temperature,
-      telemetry.heartRate.toDouble(),
-      telemetry.spo2.toDouble(),
-      telemetry.gasLevel.toDouble(),
-      telemetry.humidity,
+      safeTemp,
+      safeHeart,
+      safeSpO2,
+      safeGas,
+      safeHumidity,
       motionVal,
       telemetry.fallDetected ? 1.0 : 0.0,
       telemetry.battery.toDouble(),
@@ -142,34 +150,42 @@ class AiPredictionService {
       factors.add("Hardware SOS emergency button depressed");
     }
     if (t.fallDetected) {
-      factors.add("Abrupt gravitational shock / worker fall event confirmed");
+      factors.add("Abrupt gravitational shock / worker fall event confirmed by MPU6050");
     }
-    if (t.gasLevel > 350) {
-      factors.add("Atmospheric toxic/combustible gas spike (${t.gasLevel} PPM, limit: 150 PPM)");
-    } else if (t.gasLevel > 180) {
-      factors.add("Elevated ambient gas concentration (${t.gasLevel} PPM)");
-    }
-
-    if (t.spo2 < 90) {
-      factors.add("Acute hypoxia: SpO2 critically low (${t.spo2}%, nominal >= 95%)");
-    } else if (t.spo2 < 94) {
-      factors.add("Borderline oxygen desaturation (${t.spo2}%)");
+    if (t.gasLevel > 0) {
+      if (t.gasLevel > 350) {
+        factors.add("Atmospheric toxic/combustible gas spike (${t.gasLevel} PPM, limit: 150 PPM)");
+      } else if (t.gasLevel > 180) {
+        factors.add("Elevated ambient gas concentration (${t.gasLevel} PPM)");
+      }
     }
 
-    if (t.temperature > 38.5) {
-      factors.add("Hyperthermia / Heat stroke condition (${t.temperature.toStringAsFixed(1)}°C)");
-    } else if (t.temperature < 35.0) {
-      factors.add("Hypothermia alert (${t.temperature.toStringAsFixed(1)}°C)");
-    } else if (t.temperature > 37.5) {
-      factors.add("Elevated body temperature (${t.temperature.toStringAsFixed(1)}°C)");
+    if (t.spo2 > 0) {
+      if (t.spo2 < 90) {
+        factors.add("Acute hypoxia: SpO2 critically low (${t.spo2}%, nominal >= 95%)");
+      } else if (t.spo2 < 94) {
+        factors.add("Borderline oxygen desaturation (${t.spo2}%)");
+      }
     }
 
-    if (t.heartRate > 120) {
-      factors.add("Severe tachycardia (${t.heartRate} BPM, limit: 100 BPM)");
-    } else if (t.heartRate < 45) {
-      factors.add("Severe bradycardia (${t.heartRate} BPM)");
-    } else if (t.heartRate > 100) {
-      factors.add("Elevated cardiac exertion (${t.heartRate} BPM)");
+    if (t.temperature > 0.0) {
+      if (t.temperature > 38.5) {
+        factors.add("Hyperthermia / Heat stroke condition (${t.temperature.toStringAsFixed(1)}°C)");
+      } else if (t.temperature < 35.0) {
+        factors.add("Hypothermia alert (${t.temperature.toStringAsFixed(1)}°C)");
+      } else if (t.temperature > 37.5) {
+        factors.add("Elevated ambient temperature (${t.temperature.toStringAsFixed(1)}°C)");
+      }
+    }
+
+    if (t.heartRate > 0) {
+      if (t.heartRate > 120) {
+        factors.add("Severe tachycardia (${t.heartRate} BPM, limit: 100 BPM)");
+      } else if (t.heartRate < 45) {
+        factors.add("Severe bradycardia (${t.heartRate} BPM)");
+      } else if (t.heartRate > 100) {
+        factors.add("Elevated cardiac exertion (${t.heartRate} BPM)");
+      }
     }
 
     if (t.humidity > 80.0) {
@@ -181,7 +197,7 @@ class AiPredictionService {
     }
 
     if (factors.isEmpty && status == SafetyStatus.safe) {
-      factors.add("All physiological vitals and environmental metrics within nominal limits.");
+      factors.add("Hardware sensor readings (DHT & MPU6050) are within nominal limits.");
     }
 
     return factors;

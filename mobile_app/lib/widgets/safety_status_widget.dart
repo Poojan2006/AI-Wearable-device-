@@ -21,24 +21,34 @@ class SafetyStatusWidget extends StatelessWidget {
 
     if (!isLarge) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withAlpha(38),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color, width: 1.2),
+          color: color.withAlpha(24),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withAlpha(80), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 16),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: color.withAlpha(160), blurRadius: 4),
+                ],
+              ),
+            ),
             const SizedBox(width: 6),
             Text(
               title,
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w800,
-                fontSize: 12,
-                letterSpacing: 0.5,
+                fontSize: 11,
+                letterSpacing: 0.3,
               ),
             ),
           ],
@@ -48,65 +58,143 @@ class SafetyStatusWidget extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        color: color.withAlpha(26),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color, width: 2),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withAlpha(42),
+            const Color(0xFF131C32),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withAlpha(85), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: color.withAlpha(38),
-            blurRadius: 16,
-            spreadRadius: 2,
+            color: color.withAlpha(28),
+            blurRadius: 22,
+            spreadRadius: -2,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withAlpha(51),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 36),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withAlpha(38),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color.withAlpha(100), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withAlpha(50),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "SAFETY STATUS",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
+                              color: Colors.white.withAlpha(160),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withAlpha(28),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: color.withAlpha(70)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bolt_rounded, size: 10, color: color),
+                              const SizedBox(width: 2),
+                              Text(
+                                "EDGE RF",
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: color,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.6,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (confidence != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "AI SAFETY PREDICTION",
+                Text(
+                  "AI Prediction Confidence",
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                    color: Colors.white70,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withAlpha(160),
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  title,
+                  "${(confidence! * 100).toStringAsFixed(1)}%",
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
                     color: color,
                   ),
                 ),
-                if (confidence != null)
-                  Text(
-                    "Model Confidence: ${(confidence! * 100).toStringAsFixed(1)}%",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withAlpha(204),
-                    ),
-                  ),
               ],
             ),
-          ),
+            const SizedBox(height: 7),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: confidence!.clamp(0.0, 1.0),
+                minHeight: 5,
+                backgroundColor: Colors.white.withAlpha(15),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ],
         ],
       ),
     );

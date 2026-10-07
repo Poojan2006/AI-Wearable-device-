@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'database/local_database.dart';
 import 'services/notification_service.dart';
+import 'services/sms_service.dart';
 import 'services/auth_service.dart';
 import 'models/user_model.dart';
 import 'screens/auth/login_screen.dart';
@@ -13,17 +15,21 @@ import 'screens/supervisor/supervisor_dashboard.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Local Notifications (offline capable)
+  // Initialize Local Notifications & Emergency SMS Service (offline capable)
   try {
     await NotificationService.instance.initialize();
+    await SmsService.instance.initialize();
   } catch (_) {}
 
-  // Initialize Firebase (fail-safe for offline or unconfigured environments)
+  // Initialize Firebase with cloud credentials (fail-safe for offline environments)
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     await AuthService.instance.initializeFirebase();
-  } catch (_) {
-    // Graceful offline fallback: The app works 100% standalone without Firebase
+    debugPrint("[Firebase] Successfully initialized with project: ${Firebase.app().options.projectId}");
+  } catch (e) {
+    debugPrint("[Firebase] Init note: $e - running with local SQLite buffer fallback.");
   }
 
   // Pre-load local SQLite session
@@ -60,6 +66,36 @@ class WorkerSafetyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark, // Default to sleek industrial dark mode
       home: initialScreen,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            ?child,
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: IgnorePointer(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Text(
+                        "CSE_C",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 2.2,
+                          color: Colors.white.withValues(alpha: 0.24),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

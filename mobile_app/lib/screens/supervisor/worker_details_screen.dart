@@ -43,80 +43,120 @@ class WorkerDetailsScreen extends StatelessWidget {
               );
 
           return ListView(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             children: [
               // Identification Banner
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF172138), Color(0xFF0E1526)],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF243350), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(50),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              worker.name,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                worker.name,
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              "Worker ID: ${worker.workerId}  •  Device: ${worker.deviceId}",
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            ),
-                          ],
+                              const SizedBox(height: 3),
+                              Text(
+                                "ID: ${worker.workerId}  •  Node: ${worker.deviceId}",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         BatteryIndicator(percentage: t.battery),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const Divider(color: Color(0xFF334155), height: 1),
+                    const Divider(color: Color(0xFF243350), height: 1),
                     const SizedBox(height: 10),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF06B6D4)),
-                            const SizedBox(width: 4),
-                            Text(
-                              "GPS: ${t.latitude.toStringAsFixed(4)}, ${t.longitude.toStringAsFixed(4)}",
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                            ),
-                          ],
+                        const Icon(Icons.location_on_rounded, size: 14, color: Color(0xFF38BDF8)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "GPS: ${t.latitude.toStringAsFixed(4)}, ${t.longitude.toStringAsFixed(4)}",
+                            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Text(
-                          "Last Broadcast: $timeStr",
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                          timeStr,
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // Live Telemetry Grid
-              const Text(
-                "FIELD SENSOR TELEMETRY STREAM",
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF94A3B8),
-                  letterSpacing: 0.8,
-                ),
+              // Live Telemetry Grid Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "REAL-TIME SENSOR TELEMETRY",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withAlpha(25),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF10B981).withAlpha(60)),
+                    ),
+                    child: const Text(
+                      "LIVE 2Hz",
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               GridView.count(
                 crossAxisCount: 2,
@@ -140,17 +180,17 @@ class WorkerDetailsScreen extends StatelessWidget {
                     value: "${t.spo2}",
                     unit: "%",
                     icon: Icons.water_drop_rounded,
-                    accentColor: t.spo2 < 92 ? const Color(0xFFEF4444) : const Color(0xFF06B6D4),
+                    accentColor: t.spo2 < 92 ? const Color(0xFFEF4444) : const Color(0xFF38BDF8),
                     statusLabel: t.spo2 < 92 ? "LOW O2" : "OPTIMAL",
                     progressPercent: (t.spo2 - 70) / 30,
                   ),
                   TelemetryCard(
-                    title: "Gas Concentration",
+                    title: "Gas Level",
                     value: "${t.gasLevel}",
                     unit: "PPM",
                     icon: Icons.air_rounded,
-                    accentColor: t.gasLevel > 300 ? const Color(0xFFEF4444) : const Color(0xFFEAB308),
-                    statusLabel: t.gasLevel > 300 ? "HAZARDOUS" : "NORMAL",
+                    accentColor: t.gasLevel > 300 ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+                    statusLabel: t.gasLevel > 300 ? "HAZARDOUS" : "SAFE",
                     progressPercent: t.gasLevel / 500,
                   ),
                   TelemetryCard(
@@ -168,63 +208,38 @@ class WorkerDetailsScreen extends StatelessWidget {
 
               // Motion & Fall Detection
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF172138), Color(0xFF0E1526)],
+                  ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: const Color(0xFF243350), width: 1.2),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Column(
-                      children: [
-                        const Icon(Icons.directions_walk_rounded, color: Color(0xFF06B6D4), size: 24),
-                        const SizedBox(height: 4),
-                        Text(
-                          t.motionStatus,
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 13),
-                        ),
-                        const Text("Motion", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                      ],
+                    _buildKineticTile(
+                      icon: Icons.directions_walk_rounded,
+                      label: "Motion",
+                      value: t.motionStatus,
+                      color: const Color(0xFF38BDF8),
                     ),
-                    Column(
-                      children: [
-                        Icon(
-                          Icons.personal_injury_rounded,
-                          color: t.fallDetected ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          t.fallDetected ? "FALL REPORTED" : "CLEAR",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: t.fallDetected ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                            fontSize: 13,
-                          ),
-                        ),
-                        const Text("Fall Sensor", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                      ],
+                    Container(width: 1, height: 36, color: const Color(0xFF243350)),
+                    _buildKineticTile(
+                      icon: Icons.personal_injury_rounded,
+                      label: "Fall Sensor",
+                      value: t.fallDetected ? "DETECTED" : "CLEAR",
+                      color: t.fallDetected ? const Color(0xFFEF4444) : const Color(0xFF10B981),
                     ),
-                    Column(
-                      children: [
-                        Icon(
-                          Icons.sos_rounded,
-                          color: t.sos ? const Color(0xFFDC2626) : const Color(0xFF10B981),
-                          size: 24,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          t.sos ? "ACTIVE" : "OFF",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: t.sos ? const Color(0xFFDC2626) : const Color(0xFF10B981),
-                            fontSize: 13,
-                          ),
-                        ),
-                        const Text("SOS Switch", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                      ],
+                    Container(width: 1, height: 36, color: const Color(0xFF243350)),
+                    _buildKineticTile(
+                      icon: Icons.sos_rounded,
+                      label: "SOS Panic",
+                      value: t.sos ? "ACTIVE" : "OFF",
+                      color: t.sos ? const Color(0xFFF43F5E) : const Color(0xFF10B981),
                     ),
                   ],
                 ),
@@ -233,6 +248,42 @@ class WorkerDetailsScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildKineticTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: color.withAlpha(25),
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withAlpha(60), width: 1),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: color,
+            fontSize: 11,
+            letterSpacing: 0.3,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

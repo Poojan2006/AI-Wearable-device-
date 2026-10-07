@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -29,10 +30,15 @@ class AuthService {
     try {
       if (Firebase.apps.isNotEmpty) {
         _firebaseAuth = fb_auth.FirebaseAuth.instance;
-        _firebaseDb = FirebaseDatabase.instance;
+        _firebaseDb = FirebaseDatabase.instanceFor(
+          app: Firebase.app(),
+          databaseURL: AppConstants.rtdbUrl,
+        );
         _isFirebaseAvailable = true;
+        debugPrint("[AuthService] Firebase Auth & Regional RTDB initialized (${AppConstants.rtdbUrl})");
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint("[AuthService] Firebase init error: $e");
       _isFirebaseAvailable = false;
     }
   }
@@ -117,6 +123,25 @@ class AuthService {
       _userController.add(profile);
       return profile;
     } on fb_auth.FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        // Auto-provision demo account to Firebase Auth & RTDB
+        if (cleanEmail == 'worker@safeguard.com' || cleanEmail == 'supervisor@safeguard.com') {
+          try {
+            final role = cleanEmail.contains('sup') ? UserRole.supervisor : UserRole.worker;
+            final created = await register(
+              name: role == UserRole.supervisor ? 'Site Supervisor' : 'Field Worker',
+              email: cleanEmail,
+              password: password,
+              role: role,
+              workerId: role == UserRole.worker ? 'W-104' : null,
+            );
+            return created;
+          } catch (_) {
+            // fall through
+          }
+        }
+      }
+
       // Check if network error occurred and we have cached session
       if (e.code == 'network-request-failed') {
         final cached = await LocalDatabase.instance.getCachedUser();

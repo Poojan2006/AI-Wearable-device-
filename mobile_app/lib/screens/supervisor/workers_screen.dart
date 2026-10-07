@@ -75,17 +75,42 @@ class _WorkersScreenState extends State<WorkersScreen> {
                 }).toList();
 
                 if (workers.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "No workers match the specified filters.",
-                      style: TextStyle(color: Color(0xFF94A3B8)),
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF6366F1).withAlpha(25),
+                              border: Border.all(color: const Color(0xFF6366F1).withAlpha(60), width: 1.5),
+                            ),
+                            child: const Icon(Icons.people_alt_outlined, color: Color(0xFF6366F1), size: 30),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            "No Workers Found",
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Try adjusting your search criteria or filter category.",
+                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
 
                 return ListView.builder(
                   itemCount: workers.length,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   itemBuilder: (context, index) {
                     final worker = workers[index];
                     return WorkerStatusCard(
@@ -111,12 +136,39 @@ class _WorkersScreenState extends State<WorkersScreen> {
 
   Widget _buildFilterChip(String val, String label) {
     final isSelected = _statusFilter == val;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) setState(() => _statusFilter = val);
-      },
+    final Color activeColor = val == 'EMERGENCY'
+        ? const Color(0xFFF43F5E)
+        : val == 'DANGER'
+            ? const Color(0xFFEF4444)
+            : val == 'WARNING'
+                ? const Color(0xFFF59E0B)
+                : val == 'SAFE'
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF6366F1);
+
+    return InkWell(
+      onTap: () => setState(() => _statusFilter = val),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withAlpha(35) : const Color(0xFF131D33),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? activeColor : const Color(0xFF243350),
+            width: isSelected ? 1.4 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
     );
   }
 }

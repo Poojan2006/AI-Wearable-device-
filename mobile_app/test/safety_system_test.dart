@@ -10,10 +10,14 @@ import 'package:worker_safety_app/database/local_database.dart';
 import 'package:worker_safety_app/repositories/supervisor_repository.dart';
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     // Initialize FFI for local SQLite in test runner
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    final db = await LocalDatabase.instance.database;
+    await db.delete('alerts');
+    await db.delete('telemetry');
+    await db.delete('sync_queue');
   });
 
   group('Worker Safety Monitoring System - Verification & Scenarios', () {

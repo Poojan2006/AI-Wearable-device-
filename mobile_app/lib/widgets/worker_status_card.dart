@@ -26,11 +26,11 @@ class WorkerStatusCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: status == SafetyStatus.safe
                 ? const Color(0xFF334155)
@@ -44,74 +44,90 @@ class WorkerStatusCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: status.color.withAlpha(38),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          worker.workerId.replaceFirst('W-', ''),
-                          style: TextStyle(
-                            color: status.color,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: status.color.withAlpha(38),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            worker.workerId.replaceFirst('W-', ''),
+                            style: TextStyle(
+                              color: status.color,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          worker.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              worker.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              "ID: ${worker.workerId} • ${worker.deviceId}",
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          "ID: ${worker.workerId}  •  ${worker.deviceId}",
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 6),
                 SafetyStatusWidget(status: status),
               ],
             ),
-            const SizedBox(height: 12),
-            const Divider(color: Color(0xFF334155), height: 1),
             const SizedBox(height: 10),
+            const Divider(color: Color(0xFF334155), height: 1),
+            const SizedBox(height: 8),
 
             // Bottom Row: Battery, Location, Last Updated
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 BatteryIndicator(percentage: worker.battery),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 3),
-                    Text(
-                      "${worker.latitude.toStringAsFixed(3)}, ${worker.longitude.toStringAsFixed(3)}",
-                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                    ),
-                  ],
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 2),
+                      Flexible(
+                        child: Text(
+                          "${worker.latitude.toStringAsFixed(2)}, ${worker.longitude.toStringAsFixed(2)}",
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 4),
                 Text(
-                  "Updated: $timeStr",
-                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  timeStr,
+                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
                 ),
               ],
             ),

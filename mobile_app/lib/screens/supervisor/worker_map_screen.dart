@@ -113,23 +113,30 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
 
               // Floating Map Legend
               Positioned(
-                bottom: 20,
-                left: 16,
-                right: 16,
+                bottom: 24,
+                left: 14,
+                right: 14,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A).withAlpha(230),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    color: const Color(0xFF090D1A).withAlpha(235),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF243350), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(120),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildLegendItem(SafetyStatus.safe.color, "Safe"),
-                      _buildLegendItem(SafetyStatus.warning.color, "Warning"),
-                      _buildLegendItem(SafetyStatus.danger.color, "Danger"),
-                      _buildLegendItem(SafetyStatus.emergency.color, "Emergency"),
+                      _buildLegendItem(const Color(0xFF10B981), "Safe"),
+                      _buildLegendItem(const Color(0xFFF59E0B), "Warning"),
+                      _buildLegendItem(const Color(0xFFEF4444), "Danger"),
+                      _buildLegendItem(const Color(0xFFF43F5E), "SOS Alert"),
                     ],
                   ),
                 ),
@@ -145,14 +152,29 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
     return Row(
       children: [
         Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withAlpha(160),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
         ),
       ],
     );

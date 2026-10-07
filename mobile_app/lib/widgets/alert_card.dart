@@ -22,11 +22,11 @@ class AlertCard extends StatelessWidget {
     );
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: alert.acknowledged ? const Color(0xFF334155) : color.withAlpha(180),
           width: alert.acknowledged ? 1 : 1.5,
@@ -39,37 +39,43 @@ class AlertCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(38),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      alert.severity,
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(38),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        alert.severity,
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    alert.type,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        alert.type,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 4),
               Text(
                 timeStr,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
               ),
             ],
           ),
@@ -78,7 +84,7 @@ class AlertCard extends StatelessWidget {
           // Message & Worker
           Text(
             alert.message,
-            style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 13, height: 1.3),
+            style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 12, height: 1.3),
           ),
           const SizedBox(height: 8),
 
@@ -86,12 +92,15 @@ class AlertCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Worker: ${alert.workerName} (${alert.workerId})",
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  "Worker: ${alert.workerName} (${alert.workerId})",
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               if (alert.acknowledged)

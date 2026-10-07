@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../core/constants/app_constants.dart';
 import '../core/errors/app_exceptions.dart';
@@ -27,6 +28,7 @@ class BleService {
   StreamSubscription? _sosSub;
   StreamSubscription? _batterySub;
   StreamSubscription? _gpsSub;
+  StreamSubscription? _scanSub;
 
   bool _isAutoReconnecting = false;
   int _reconnectAttempts = 0;
@@ -103,14 +105,28 @@ class BleService {
         throw BleException("Bluetooth is disabled. Please enable Bluetooth.");
       }
 
+      _scanSub?.cancel();
       final List<DeviceModel> foundDevices = [];
-      FlutterBluePlus.scanResults.listen((results) {
+      _scanSub = FlutterBluePlus.scanResults.listen((results) {
         for (final r in results) {
-          final name = r.device.platformName.isNotEmpty
-              ? r.device.platformName
-              : (r.advertisementData.advName.isNotEmpty
-                  ? r.advertisementData.advName
-                  : 'ESP32 Node (${r.device.remoteId.str.substring(0, 5)})');
+          final advName = r.advertisementData.advName;
+          final platformName = r.device.platformName;
+          String name = platformName.isNotEmpty ? platformName : advName;
+
+          final hasOurService = r.advertisementData.serviceUuids.any(
+            (u) =>
+                u.str.toLowerCase() == AppConstants.bleServiceUuid.toLowerCase() ||
+                u.str.toLowerCase().contains('fff0'),
+          );
+
+          if (name.isEmpty && hasOurService) {
+            name = 'ESP32_SAFE_01';
+          }
+
+          if (name.isEmpty) {
+            final idStr = r.device.remoteId.str;
+            name = 'BLE Device (${idStr.length > 5 ? idStr.substring(0, 5) : idStr})';
+          }
 
           final deviceModel = DeviceModel(
             id: r.device.remoteId.str,
@@ -126,26 +142,35 @@ class BleService {
           } else {
             foundDevices.add(deviceModel);
           }
+
+          // Prioritize ESP32 devices at top of list
+          foundDevices.sort((a, b) {
+            final aIsEsp = a.name.contains('ESP') || a.name.contains('SAFE');
+            final bIsEsp = b.name.contains('ESP') || b.name.contains('SAFE');
+            if (aIsEsp && !bIsEsp) return -1;
+            if (!aIsEsp && bIsEsp) return 1;
+            return b.rssi.compareTo(a.rssi);
+          });
+
           _devicesListController.add(List.from(foundDevices));
         }
       });
 
+      // Scan broadly so Android delivers all nearby BLE packets without hardware UUID drop
       await FlutterBluePlus.startScan(
-        withServices: [Guid(AppConstants.bleServiceUuid)],
         timeout: timeout,
+        androidUsesFineLocation: true,
       );
     } catch (e) {
-      // If service UUID filter returns nothing or platform restricts it, fallback to general scan
-      try {
-        await FlutterBluePlus.startScan(timeout: timeout);
-      } catch (err) {
-        throw BleException("BLE Scan Failed: $err");
-      }
+      if (e is BleException) rethrow;
+      throw BleException("BLE Scan Failed: $e");
     }
   }
 
   Future<void> stopScan() async {
     try {
+      _scanSub?.cancel();
+      _scanSub = null;
       await FlutterBluePlus.stopScan();
     } catch (_) {}
   }
@@ -189,22 +214,30 @@ class BleService {
         await device.requestMtu(256);
       } catch (_) {}
 
+      // Clear Android stale GATT cache
+      try {
+        await device.clearGattCache();
+      } catch (_) {}
+
       // Discover Services
       final services = await device.discoverServices();
+      debugPrint("[BleService] Discovered ${services.length} services on ${device.remoteId}");
       for (final service in services) {
-        if (service.uuid.toString().toLowerCase() ==
-            AppConstants.bleServiceUuid.toLowerCase()) {
+        final sUuid = service.uuid.toString().toLowerCase();
+        debugPrint("[BleService] Service: $sUuid");
+        if (sUuid == AppConstants.bleServiceUuid.toLowerCase() || sUuid.contains('fff0')) {
           for (final char in service.characteristics) {
             final uuid = char.uuid.toString().toLowerCase();
-            if (uuid == AppConstants.charTelemetryUuid.toLowerCase()) {
+            debugPrint("[BleService]   Found Characteristic: $uuid");
+            if (uuid == AppConstants.charTelemetryUuid.toLowerCase() || uuid.contains('fff1')) {
               _telemetryChar = char;
-            } else if (uuid == AppConstants.charGpsUuid.toLowerCase()) {
+            } else if (uuid == AppConstants.charGpsUuid.toLowerCase() || uuid.contains('fff2')) {
               _gpsChar = char;
-            } else if (uuid == AppConstants.charBatteryUuid.toLowerCase()) {
+            } else if (uuid == AppConstants.charBatteryUuid.toLowerCase() || uuid.contains('fff3')) {
               _batteryChar = char;
-            } else if (uuid == AppConstants.charSafetyStatusUuid.toLowerCase()) {
+            } else if (uuid == AppConstants.charSafetyStatusUuid.toLowerCase() || uuid.contains('fff4')) {
               _safetyStatusChar = char;
-            } else if (uuid == AppConstants.charSosUuid.toLowerCase()) {
+            } else if (uuid == AppConstants.charSosUuid.toLowerCase() || uuid.contains('fff5')) {
               _sosChar = char;
             }
           }
@@ -215,6 +248,7 @@ class BleService {
     } catch (e) {
       _cleanUpCharacteristics();
       _connectedDevice = null;
+      debugPrint("[BleService] Error connecting: $e");
       throw BleException("Failed to connect to ESP32: $e");
     }
   }
@@ -222,13 +256,24 @@ class BleService {
   Future<void> _subscribeToNotifications() async {
     // 1. Subscribe to Telemetry Characteristic
     if (_telemetryChar != null) {
-      await _telemetryChar!.setNotifyValue(true);
+      debugPrint("[BleService] Subscribing to telemetry notifications on ${_telemetryChar!.uuid}...");
       _telemetrySub?.cancel();
-      _telemetrySub = _telemetryChar!.lastValueStream.listen((bytes) {
+      _telemetrySub = _telemetryChar!.onValueReceived.listen((bytes) {
         if (bytes.isNotEmpty) {
           _parseTelemetryBytes(bytes);
         }
       });
+      await _telemetryChar!.setNotifyValue(true);
+      try {
+        final initialBytes = await _telemetryChar!.read();
+        if (initialBytes.isNotEmpty) {
+          _parseTelemetryBytes(initialBytes);
+        }
+      } catch (e) {
+        debugPrint("[BleService] Initial read error: $e");
+      }
+    } else {
+      debugPrint("[BleService] WARNING: _telemetryChar not found!");
     }
 
     // 2. Subscribe to Hardware SOS Characteristic
@@ -281,6 +326,7 @@ class BleService {
     try {
       final jsonStr = utf8.decode(bytes).trim();
       if (jsonStr.isEmpty) return;
+      debugPrint("[BleService] << BLE RX: $jsonStr");
 
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final telemetry = Telemetry.fromJson(map);
@@ -291,7 +337,7 @@ class BleService {
         _sosController.add(true);
       }
     } catch (e) {
-      // Malformed packet ignored gracefully
+      debugPrint("[BleService] !! Parse error for ${bytes.length} bytes: $e");
     }
   }
 
@@ -320,6 +366,40 @@ class BleService {
       await _safetyStatusChar!.write([code], withoutResponse: false);
     } catch (_) {}
   }
+
+  Future<bool> testBuzzer() async {
+    if (_safetyStatusChar == null || _connectedDevice == null) {
+      debugPrint("[BleService] Cannot test buzzer: ESP32 not connected or safety char missing");
+      return false;
+    }
+    try {
+      // Send code 4 (MANUAL TEST BUZZER)
+      await _safetyStatusChar!.write([4], withoutResponse: false);
+      debugPrint("[BleService] Sent test buzzer command (4) to ESP32");
+      return true;
+    } catch (e) {
+      debugPrint("[BleService] Error testing buzzer: $e");
+      return false;
+    }
+  }
+
+  Future<bool> triggerRemoteSos() async {
+    bool sent = false;
+    if (_safetyStatusChar != null) {
+      try {
+        await _safetyStatusChar!.write([3], withoutResponse: false);
+        sent = true;
+      } catch (_) {}
+    }
+    if (_sosChar != null) {
+      try {
+        await _sosChar!.write([1], withoutResponse: false);
+        sent = true;
+      } catch (_) {}
+    }
+    return sent;
+  }
+
 
   // ---------------------------------------------------------------------------
   // Disconnection & Auto-Reconnection Management

@@ -39,24 +39,36 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFF97316), size: 24),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withAlpha(25),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF6366F1).withAlpha(60)),
+              ),
+              child: const Icon(Icons.shield_rounded, color: Color(0xFF6366F1), size: 16),
+            ),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("SUPERVISOR OPS", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                Text(
-                  _auth.currentUser?.name ?? "Command Center",
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("FLEET OPS", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.6), overflow: TextOverflow.ellipsis),
+                  Text(
+                    "${_auth.currentUser?.name ?? 'Supervisor'} • Active",
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
             tooltip: "Live Fleet Map",
-            icon: const Icon(Icons.map_rounded),
+            icon: const Icon(Icons.map_rounded, size: 20),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const WorkerMapScreen()),
@@ -64,7 +76,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
           ),
           IconButton(
             tooltip: "Alert Incidents",
-            icon: const Icon(Icons.notifications_active_rounded),
+            icon: const Icon(Icons.notifications_active_rounded, size: 20),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AlertsScreen()),
@@ -72,7 +84,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
           ),
           IconButton(
             tooltip: "Sign Out",
-            icon: const Icon(Icons.logout_rounded),
+            icon: const Icon(Icons.logout_rounded, size: 20),
             onPressed: _logout,
           ),
         ],
@@ -113,12 +125,14 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFDC2626),
-                          borderRadius: BorderRadius.circular(14),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF43F5E), Color(0xFFBE123C)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.red.withAlpha(102),
-                              blurRadius: 16,
+                              color: const Color(0xFFF43F5E).withAlpha(100),
+                              blurRadius: 18,
                               spreadRadius: 2,
                             ),
                           ],
@@ -136,11 +150,12 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 14,
+                                      fontSize: 13,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                   Text(
-                                    "One or more workers have activated SOS or are in acute danger.",
+                                    "One or more workers activated SOS or critical alert.",
                                     style: TextStyle(color: Colors.white, fontSize: 11),
                                   ),
                                 ],
@@ -153,8 +168,9 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFFDC2626),
+                                foregroundColor: const Color(0xFFBE123C),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
                               child: const Text("VIEW", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
                             ),
@@ -169,16 +185,16 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                       children: [
                         Expanded(
                           child: _buildMetricTile(
-                            "Total Workers",
+                            "TOTAL",
                             "$totalWorkers",
-                            const Color(0xFF38BDF8),
+                            const Color(0xFF6366F1),
                             Icons.groups_rounded,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildMetricTile(
-                            "Safe",
+                            "SAFE",
                             "$safeCount",
                             const Color(0xFF10B981),
                             Icons.check_circle_rounded,
@@ -187,7 +203,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildMetricTile(
-                            "Warning",
+                            "WARN",
                             "$warningCount",
                             const Color(0xFFF59E0B),
                             Icons.warning_amber_rounded,
@@ -196,9 +212,9 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildMetricTile(
-                            "Danger/SOS",
+                            "ALERT",
                             "${dangerCount + emergencyCount}",
-                            const Color(0xFFEF4444),
+                            const Color(0xFFF43F5E),
                             Icons.dangerous_rounded,
                           ),
                         ),
@@ -215,34 +231,38 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                               context,
                               MaterialPageRoute(builder: (_) => const WorkerMapScreen()),
                             ),
-                            icon: const Icon(Icons.map_rounded, size: 16),
-                            label: const Text("Live Fleet Map", style: TextStyle(fontSize: 12)),
+                            icon: const Icon(Icons.map_rounded, size: 15),
+                            label: const Text("Live Fleet Map", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF06B6D4),
-                              side: const BorderSide(color: Color(0xFF334155)),
+                              foregroundColor: const Color(0xFF38BDF8),
+                              backgroundColor: const Color(0xFF0D131F),
+                              side: const BorderSide(color: Color(0xFF1E2B3E)),
                               padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const WorkersScreen()),
                             ),
-                            icon: const Icon(Icons.people_outline_rounded, size: 16),
-                            label: const Text("Full Roster", style: TextStyle(fontSize: 12)),
+                            icon: const Icon(Icons.people_outline_rounded, size: 15),
+                            label: const Text("Full Roster", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFF97316),
-                              side: const BorderSide(color: Color(0xFF334155)),
+                              foregroundColor: const Color(0xFF10E7A0),
+                              backgroundColor: const Color(0xFF0D131F),
+                              side: const BorderSide(color: Color(0xFF1E2B3E)),
                               padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // Live Fleet Status Section
                     Row(
@@ -351,20 +371,27 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
 
   Widget _buildMetricTile(String label, String value, Color color, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF334155)),
+        color: const Color(0xFF0D131F),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF1E2B3E), width: 1),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 20),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 14),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.w900,
               color: color,
             ),
@@ -373,10 +400,12 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
           Text(
             label,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF94A3B8),
+              color: Color(0xFF8B98AD),
             ),
           ),
         ],

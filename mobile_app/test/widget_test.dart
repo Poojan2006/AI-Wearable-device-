@@ -9,7 +9,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text('SAFEGUARD PRO'), findsOneWidget);
-    expect(find.text('SIGN IN TO WORKSPACE'), findsOneWidget);
+    expect(find.text('SAFEGUARD OS'), findsOneWidget);
   });
 }

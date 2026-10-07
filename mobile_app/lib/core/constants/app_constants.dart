@@ -10,7 +10,7 @@ class AppConstants {
   static const String charSosUuid = "0000fff5-0000-1000-8000-00805f9b34fb";
 
   // App Strings
-  static const String appName = "SafeGuard Pro";
+  static const String appName = "Safegaurd";
   static const String appTagline = "Industrial Worker Safety & Vital Monitoring";
 
   // Thresholds for Visual Warnings
@@ -31,6 +31,7 @@ class AppConstants {
   static const int batteryLowThreshold = 20;
 
   // Firebase Realtime DB Paths
+  static const String rtdbUrl = "https://worker-safety-system-9798a-default-rtdb.asia-southeast1.firebasedatabase.app";
   static const String rtdbUsers = "users";
   static const String rtdbWorkers = "workers";
   static const String rtdbTelemetry = "telemetry";
@@ -38,8 +39,8 @@ class AppConstants {
   static const String rtdbDevices = "devices";
 
   // Colors
-  static const Color statusSafeColor = Color(0xFF10B981); // Emerald Green
-  static const Color statusWarningColor = Color(0xFFF59E0B); // Amber
-  static const Color statusDangerColor = Color(0xFFEF4444); // Red
-  static const Color statusEmergencyColor = Color(0xFF8B5CF6); // Deep Violet Alert / Flashing Red
+  static const Color statusSafeColor = Color(0xFF10B981); // Emerald Teal
+  static const Color statusWarningColor = Color(0xFFF59E0B); // Amber Flame
+  static const Color statusDangerColor = Color(0xFFEF4444); // High Alert Crimson
+  static const Color statusEmergencyColor = Color(0xFFF43F5E); // Vivid Emergency Pulse
 }

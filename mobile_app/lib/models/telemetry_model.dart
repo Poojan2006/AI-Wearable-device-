@@ -18,21 +18,23 @@ class Telemetry {
   final int timestamp;
   final bool synced;
   final int syncAttemptCount;
+  final double totalG;
   final String aiStatus;
 
   Telemetry({
     String? id,
     this.workerId = '',
     this.deviceId = 'ESP32_UNKNOWN',
-    this.temperature = 36.6,
-    this.heartRate = 75,
-    this.spo2 = 98,
-    this.gasLevel = 50,
-    this.humidity = 45.0,
+    this.temperature = 0.0,
+    this.heartRate = 0,
+    this.spo2 = 0,
+    this.gasLevel = 0,
+    this.humidity = 0.0,
     this.latitude = 0.0,
     this.longitude = 0.0,
     this.battery = 100,
     this.motionStatus = 'ACTIVE',
+    this.totalG = 1.0,
     this.fallDetected = false,
     this.sos = false,
     int? timestamp,
@@ -80,7 +82,6 @@ class Telemetry {
         motion = m.toString().toUpperCase();
       }
     } else if (json.containsKey('motionStatus')) {
-
       motion = json['motionStatus'].toString().toUpperCase();
     }
 
@@ -96,15 +97,16 @@ class Telemetry {
       id: json['id']?.toString() ?? const Uuid().v4(),
       workerId: workerIdOverride ?? json['workerId']?.toString() ?? '',
       deviceId: json['deviceId']?.toString() ?? 'ESP32_SAFE_01',
-      temperature: parseDouble(json['temperature'], 36.6),
-      heartRate: parseInt(json['heartRate'], 75),
-      spo2: parseInt(json['spo2'], 98),
-      gasLevel: parseInt(json['gasLevel'], 50),
-      humidity: parseDouble(json['humidity'], 50.0),
+      temperature: parseDouble(json['temperature'], 0.0),
+      heartRate: parseInt(json['heartRate'], 0),
+      spo2: parseInt(json['spo2'], 0),
+      gasLevel: parseInt(json['gasLevel'], 0),
+      humidity: parseDouble(json['humidity'], 0.0),
       latitude: parseDouble(json['latitude'] ?? json['lat'], 0.0),
       longitude: parseDouble(json['longitude'] ?? json['lng'], 0.0),
       battery: parseInt(json['battery'], 100),
       motionStatus: motion,
+      totalG: parseDouble(json['totalG'], 1.0),
       fallDetected: parseBool(json['fallDetected'], false),
       sos: parseBool(json['sos'], false),
       timestamp: ts,
@@ -163,11 +165,11 @@ class Telemetry {
       id: map['id']?.toString(),
       workerId: map['worker_id']?.toString() ?? '',
       deviceId: map['device_id']?.toString() ?? '',
-      temperature: (map['temperature'] as num?)?.toDouble() ?? 36.6,
-      heartRate: (map['heart_rate'] as num?)?.toInt() ?? 75,
-      spo2: (map['spo2'] as num?)?.toInt() ?? 98,
-      gasLevel: (map['gas_level'] as num?)?.toInt() ?? 50,
-      humidity: (map['humidity'] as num?)?.toDouble() ?? 50.0,
+      temperature: (map['temperature'] as num?)?.toDouble() ?? 0.0,
+      heartRate: (map['heart_rate'] as num?)?.toInt() ?? 0,
+      spo2: (map['spo2'] as num?)?.toInt() ?? 0,
+      gasLevel: (map['gas_level'] as num?)?.toInt() ?? 0,
+      humidity: (map['humidity'] as num?)?.toDouble() ?? 0.0,
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
       battery: (map['battery'] as num?)?.toInt() ?? 100,

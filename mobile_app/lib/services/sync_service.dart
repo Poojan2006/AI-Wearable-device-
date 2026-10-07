@@ -152,7 +152,10 @@ class SyncService {
         return;
       }
 
-      final db = FirebaseDatabase.instance;
+      final db = FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: AppConstants.rtdbUrl,
+      );
 
       // 1. Sync pending telemetry records
       final unsyncedTelemetry =
