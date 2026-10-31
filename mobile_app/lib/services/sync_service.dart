@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+
 import '../models/telemetry_model.dart';
 import '../models/alert_model.dart';
 import '../models/prediction_result.dart';
@@ -38,10 +40,12 @@ class SyncService {
 
   void _initConnectivityListener() {
     _connectivity.onConnectivityChanged.listen((results) async {
-      final hasConnection = results.any((r) =>
-          r == ConnectivityResult.wifi ||
-          r == ConnectivityResult.mobile ||
-          r == ConnectivityResult.ethernet);
+      final hasConnection = results.any(
+        (r) =>
+            r == ConnectivityResult.wifi ||
+            r == ConnectivityResult.mobile ||
+            r == ConnectivityResult.ethernet,
+      );
 
       _isOnline = hasConnection;
       _isOnlineController.add(_isOnline);
@@ -59,10 +63,12 @@ class SyncService {
   Future<void> _checkInitialConnectivity() async {
     try {
       final results = await _connectivity.checkConnectivity();
-      _isOnline = results.any((r) =>
-          r == ConnectivityResult.wifi ||
-          r == ConnectivityResult.mobile ||
-          r == ConnectivityResult.ethernet);
+      _isOnline = results.any(
+        (r) =>
+            r == ConnectivityResult.wifi ||
+            r == ConnectivityResult.mobile ||
+            r == ConnectivityResult.ethernet,
+      );
       _isOnlineController.add(_isOnline);
       await refreshPendingCount();
     } catch (_) {}
@@ -158,12 +164,14 @@ class SyncService {
       );
 
       // 1. Sync pending telemetry records
-      final unsyncedTelemetry =
-          await LocalDatabase.instance.getUnsyncedTelemetry(limit: 40);
+      final unsyncedTelemetry = await LocalDatabase.instance
+          .getUnsyncedTelemetry(limit: 40);
 
       for (final t in unsyncedTelemetry) {
         try {
-          final workerKey = t.workerId.isNotEmpty ? t.workerId : 'UNKNOWN_WORKER';
+          final workerKey = t.workerId.isNotEmpty
+              ? t.workerId
+              : 'UNKNOWN_WORKER';
           final eventId = '${workerKey}_${t.timestamp}_${t.id.substring(0, 6)}';
 
           final telemetryData = {
@@ -201,8 +209,9 @@ class SyncService {
       }
 
       // 2. Sync pending alerts
-      final unsyncedAlerts =
-          await LocalDatabase.instance.getUnsyncedAlerts(limit: 20);
+      final unsyncedAlerts = await LocalDatabase.instance.getUnsyncedAlerts(
+        limit: 20,
+      );
 
       for (final a in unsyncedAlerts) {
         try {

@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/telemetry_model.dart';
 import '../models/alert_model.dart';
 import '../database/local_database.dart';
@@ -30,7 +32,9 @@ class SmsService {
   static SmsService get instance => _instance;
   SmsService._internal();
 
-  static const MethodChannel _channel = MethodChannel('com.workersafety.worker_safety_app/sms');
+  static const MethodChannel _channel = MethodChannel(
+    'com.workersafety.worker_safety_app/sms',
+  );
 
   static const String _prefKeyPhone = 'registered_supervisor_phone';
   static const String _prefKeyEnabled = 'auto_distress_sms_enabled';
@@ -40,7 +44,8 @@ class SmsService {
   bool _autoSmsEnabled = true;
 
   int _lastSmsDispatchedEpoch = 0;
-  static const int _cooldownMs = 30000; // 30s rate limit to prevent carrier flooding
+  static const int _cooldownMs =
+      30000; // 30s rate limit to prevent carrier flooding
 
   final StreamController<SmsDispatchResult> _dispatchController =
       StreamController<SmsDispatchResult>.broadcast();
@@ -54,7 +59,9 @@ class SmsService {
       final prefs = await SharedPreferences.getInstance();
       _supervisorPhone = prefs.getString(_prefKeyPhone) ?? "+917075359983";
       _autoSmsEnabled = prefs.getBool(_prefKeyEnabled) ?? true;
-      debugPrint("[SmsService] Initialized. Registered Supervisor: $_supervisorPhone (Auto-SMS: $_autoSmsEnabled)");
+      debugPrint(
+        "[SmsService] Initialized. Registered Supervisor: $_supervisorPhone (Auto-SMS: $_autoSmsEnabled)",
+      );
     } catch (e) {
       debugPrint("[SmsService] Init error: $e");
     }
@@ -112,11 +119,14 @@ class SmsService {
         message: 'Distress SMS already dispatched recently (cooldown active).',
         timestamp: now,
       );
-      debugPrint("[SmsService] Cooldown active. Skipping duplicate SMS dispatch.");
+      debugPrint(
+        "[SmsService] Cooldown active. Skipping duplicate SMS dispatch.",
+      );
       return res;
     }
 
-    final timeStr = DateFormat('MMM d, hh:mm:ss a').format(DateTime.fromMillisecondsSinceEpoch(now));
+    final timeStr = DateFormat('MMM d, hh:mm:ss a')
+        .format(DateTime.fromMillisecondsSinceEpoch(now));
 
     // Construct high-priority SMS payload
     final StringBuffer sb = StringBuffer();
@@ -126,9 +136,15 @@ class SmsService {
     sb.writeln("Time: $timeStr");
 
     if (telemetry != null) {
-      sb.writeln("Vitals: HR ${telemetry.heartRate} BPM | SpO2 ${telemetry.spo2}% | Gas ${telemetry.gasLevel} PPM | Temp ${telemetry.temperature.toStringAsFixed(1)}°C");
-      sb.writeln("GPS: ${telemetry.latitude.toStringAsFixed(4)}, ${telemetry.longitude.toStringAsFixed(4)}");
-      sb.writeln("Map: https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}");
+      sb.writeln(
+        "Vitals: HR ${telemetry.heartRate} BPM | SpO2 ${telemetry.spo2}% | Gas ${telemetry.gasLevel} PPM | Temp ${telemetry.temperature.toStringAsFixed(1)}°C",
+      );
+      sb.writeln(
+        "GPS: ${telemetry.latitude.toStringAsFixed(4)}, ${telemetry.longitude.toStringAsFixed(4)}",
+      );
+      sb.writeln(
+        "Map: https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}",
+      );
       sb.writeln("Device: ${telemetry.deviceId}");
     } else {
       sb.writeln("Vitals: Sensor node disconnected / offline");
@@ -139,17 +155,16 @@ class SmsService {
     SmsDispatchResult res;
 
     try {
-      final Map<dynamic, dynamic>? nativeResult = await _channel.invokeMapMethod<dynamic, dynamic>(
-        'sendDistressSms',
-        {
-          'phoneNumber': _supervisorPhone,
-          'message': messageBody,
-        },
-      );
+      final Map<dynamic, dynamic>? nativeResult = await _channel
+          .invokeMapMethod<dynamic, dynamic>('sendDistressSms', {
+            'phoneNumber': _supervisorPhone,
+            'message': messageBody,
+          });
 
       _lastSmsDispatchedEpoch = now;
       final mode = nativeResult?['mode']?.toString() ?? 'DIRECT_SMS';
-      final success = nativeResult?['success'] == true || mode == 'INTENT_LAUNCHED';
+      final success =
+          nativeResult?['success'] == true || mode == 'INTENT_LAUNCHED';
 
       res = SmsDispatchResult(
         success: success,
@@ -189,7 +204,8 @@ class SmsService {
             workerId: workerId,
             workerName: workerName,
             type: 'DISTRESS_SMS',
-            message: "Automatic cellular SMS sent to supervisor ($_supervisorPhone): $condition",
+            message:
+                "Automatic cellular SMS sent to supervisor ($_supervisorPhone): $condition",
             severity: 'EMERGENCY',
             timestamp: now,
             acknowledged: true,
@@ -197,7 +213,9 @@ class SmsService {
           ),
         );
       } catch (dbError) {
-        debugPrint("[SmsService] Note: failed to insert alert into SQLite: $dbError");
+        debugPrint(
+          "[SmsService] Note: failed to insert alert into SQLite: $dbError",
+        );
       }
     }
 

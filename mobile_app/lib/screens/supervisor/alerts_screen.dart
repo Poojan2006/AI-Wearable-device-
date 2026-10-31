@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../repositories/supervisor_repository.dart';
 import '../../models/alert_model.dart';
 import '../../widgets/alert_card.dart';
+import '../../core/theme/app_theme.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -15,25 +17,39 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppTheme.textPrimary(context);
+    final textSub = AppTheme.textSub(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Fleet Alerts & Incident Log"),
-      ),
+      backgroundColor: AppTheme.scaffoldBg(context),
+      appBar: AppBar(title: const Text("Fleet Incident Log")),
       body: Column(
         children: [
-          // Filter Chips (Scrollable to prevent narrow-screen overflow)
+          // Filter Chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                _buildFilterChip('ALL', 'All Incidents', Icons.view_list_rounded),
+                _buildFilterChip(
+                  'ALL',
+                  'All Incidents',
+                  Icons.view_list_rounded,
+                ),
                 const SizedBox(width: 8),
-                _buildFilterChip('EMERGENCY', 'Emergency', Icons.emergency_rounded),
+                _buildFilterChip(
+                  'EMERGENCY',
+                  'Emergency',
+                  Icons.emergency_rounded,
+                ),
                 const SizedBox(width: 8),
                 _buildFilterChip('DANGER', 'Danger', Icons.dangerous_rounded),
                 const SizedBox(width: 8),
-                _buildFilterChip('WARNING', 'Warning', Icons.warning_amber_rounded),
+                _buildFilterChip(
+                  'WARNING',
+                  'Warning',
+                  Icons.warning_amber_rounded,
+                ),
               ],
             ),
           ),
@@ -57,29 +73,31 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: 68,
-                            height: 68,
+                            width: 64,
+                            height: 64,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFF10B981).withAlpha(25),
-                              border: Border.all(color: const Color(0xFF10B981).withAlpha(60), width: 1.5),
+                              color: AppTheme.safeGreen.withAlpha(25),
                             ),
-                            child: const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 36),
+                            child: const Icon(
+                              Icons.verified_user_rounded,
+                              color: AppTheme.safeGreen,
+                              size: 34,
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
+                          const SizedBox(height: 14),
+                          Text(
                             "Fleet Sector Clear",
                             style: TextStyle(
-                              color: Colors.white,
+                              color: textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            "No active alerts matching this filter category.",
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                          const SizedBox(height: 4),
+                          Text(
+                            "No active incidents matching this filter category.",
+                            style: TextStyle(color: textSub, fontSize: 12.5),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -90,7 +108,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
                 return ListView.builder(
                   itemCount: alerts.length,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   itemBuilder: (context, index) {
                     final alert = alerts[index];
                     return AlertCard(
@@ -98,12 +119,15 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       onAcknowledge: alert.acknowledged
                           ? null
                           : () async {
-                              await SupervisorRepository.instance.acknowledgeAlert(alert.id);
+                              await SupervisorRepository.instance
+                                  .acknowledgeAlert(alert.id);
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Incident for ${alert.workerName} marked acknowledged."),
-                                  backgroundColor: const Color(0xFF10B981),
+                                  content: Text(
+                                    "Incident for ${alert.workerName} marked acknowledged.",
+                                  ),
+                                  backgroundColor: AppTheme.safeGreen,
                                 ),
                               );
                             },
@@ -120,24 +144,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildFilterChip(String val, String label, IconData icon) {
     final isSelected = _severityFilter == val;
+    final isDark = AppTheme.isDark(context);
+
     final Color activeColor = val == 'EMERGENCY'
-        ? const Color(0xFFF43F5E)
+        ? AppTheme.dangerRed
         : val == 'DANGER'
-            ? const Color(0xFFEF4444)
-            : val == 'WARNING'
-                ? const Color(0xFFF59E0B)
-                : const Color(0xFF6366F1);
+        ? AppTheme.dangerRed
+        : val == 'WARNING'
+        ? AppTheme.warningAmber
+        : AppTheme.primary;
 
     return InkWell(
       onTap: () => setState(() => _severityFilter = val),
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withAlpha(40) : const Color(0xFF131D33),
+          color: isSelected
+              ? activeColor.withAlpha(isDark ? 40 : 25)
+              : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? activeColor : const Color(0xFF243350),
+            color: isSelected ? activeColor : AppTheme.border(context),
             width: isSelected ? 1.4 : 1,
           ),
         ),
@@ -146,17 +174,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
           children: [
             Icon(
               icon,
-              size: 13,
-              color: isSelected ? activeColor : const Color(0xFF94A3B8),
+              size: 14,
+              color: isSelected ? activeColor : AppTheme.textSub(context),
             ),
             const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
-                letterSpacing: 0.3,
+                color: isSelected ? activeColor : AppTheme.textSub(context),
               ),
             ),
           ],

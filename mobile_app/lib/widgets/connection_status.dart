@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class ConnectionStatusWidget extends StatelessWidget {
   final bool isBleConnected;
   final bool isOnline;
   final int pendingSyncCount;
   final VoidCallback? onBleTap;
+  final VoidCallback? onSyncTap;
 
   const ConnectionStatusWidget({
     super.key,
@@ -12,16 +15,29 @@ class ConnectionStatusWidget extends StatelessWidget {
     required this.isOnline,
     required this.pendingSyncCount,
     this.onBleTap,
+    this.onSyncTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = AppTheme.border(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D131F),
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E2B3E), width: 1),
+        border: Border.all(color: borderColor, width: 1),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withAlpha(5),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
       child: Row(
         children: [
@@ -29,25 +45,29 @@ class ConnectionStatusWidget extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: onBleTap,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: _buildIndicator(
-                  icon: Icons.bluetooth_rounded,
+                  context: context,
+                  icon: isBleConnected
+                      ? Icons.bluetooth_connected_rounded
+                      : Icons.bluetooth_disabled_rounded,
                   label: 'BLE LINK',
-                  status: isBleConnected ? 'CONNECTED' : 'OFFLINE',
+                  status: isBleConnected ? 'CONNECTED' : 'DISCONNECTED',
                   isPositive: isBleConnected,
                 ),
               ),
             ),
           ),
-          Container(width: 1, height: 24, color: const Color(0xFF1E2B3E)),
+          Container(width: 1, height: 26, color: borderColor),
 
           // 2. Internet Status
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: _buildIndicator(
+                context: context,
                 icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
                 label: 'NETWORK',
                 status: isOnline ? 'ONLINE' : 'LOCAL ONLY',
@@ -55,18 +75,25 @@ class ConnectionStatusWidget extends StatelessWidget {
               ),
             ),
           ),
-          Container(width: 1, height: 24, color: const Color(0xFF1E2B3E)),
+          Container(width: 1, height: 26, color: borderColor),
 
           // 3. Cloud Sync Queue Status
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: _buildIndicator(
-                icon: Icons.sync_rounded,
-                label: 'CLOUD SYNC',
-                status: pendingSyncCount == 0 ? 'SYNCED' : '$pendingSyncCount QUEUED',
-                isPositive: pendingSyncCount == 0,
-                customWarning: pendingSyncCount > 0,
+            child: InkWell(
+              onTap: onSyncTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: _buildIndicator(
+                  context: context,
+                  icon: Icons.cloud_sync_rounded,
+                  label: 'CLOUD SYNC',
+                  status: pendingSyncCount == 0
+                      ? 'SYNCED'
+                      : '$pendingSyncCount QUEUED',
+                  isPositive: pendingSyncCount == 0,
+                  customWarning: pendingSyncCount > 0,
+                ),
               ),
             ),
           ),
@@ -76,6 +103,7 @@ class ConnectionStatusWidget extends StatelessWidget {
   }
 
   Widget _buildIndicator({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String status,
@@ -83,8 +111,8 @@ class ConnectionStatusWidget extends StatelessWidget {
     bool customWarning = false,
   }) {
     final Color dotColor = isPositive
-        ? const Color(0xFF10B981) // Green
-        : (customWarning ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)); // Amber or Red
+        ? AppTheme.safeGreen
+        : (customWarning ? AppTheme.warningAmber : AppTheme.dangerRed);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,34 +121,31 @@ class ConnectionStatusWidget extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: Colors.white70),
+            Icon(icon, size: 13, color: AppTheme.textSub(context)),
             const SizedBox(width: 4),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8),
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSub(context),
                 letterSpacing: 0.3,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 7,
-              height: 7,
+              width: 6,
+              height: 6,
               decoration: BoxDecoration(
                 color: dotColor,
                 shape: BoxShape.circle,
                 boxShadow: [
-                  BoxShadow(
-                    color: dotColor.withAlpha(128),
-                    blurRadius: 4,
-                  ),
+                  BoxShadow(color: dotColor.withAlpha(128), blurRadius: 4),
                 ],
               ),
             ),

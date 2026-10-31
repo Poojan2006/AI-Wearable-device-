@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+
 import '../core/constants/app_constants.dart';
 import '../core/errors/app_exceptions.dart';
 import '../models/telemetry_model.dart';
@@ -46,7 +48,8 @@ class BleService {
   final _gpsController = StreamController<Map<String, double>>.broadcast();
   final _connectionStateController =
       StreamController<BluetoothConnectionState>.broadcast();
-  final _devicesListController = StreamController<List<DeviceModel>>.broadcast();
+  final _devicesListController =
+      StreamController<List<DeviceModel>>.broadcast();
 
   // Public Streams
   Stream<Telemetry> get telemetryStream => _telemetryController.stream;
@@ -59,13 +62,16 @@ class BleService {
       _devicesListController.stream;
 
   // Public State Getters
-  bool get isConnected =>
-      _connectedDevice != null || _isVirtualNodeActive;
+  bool get isConnected => _connectedDevice != null || _isVirtualNodeActive;
   bool get isVirtualNodeActive => _isVirtualNodeActive;
-  String? get connectedDeviceId =>
-      _isVirtualNodeActive ? 'ESP32_SIMULATED_01' : _connectedDevice?.remoteId.str;
-  String? get connectedDeviceName =>
-      _isVirtualNodeActive ? 'ESP32_SAFE_01 (Virtual)' : (_connectedDevice?.platformName.isNotEmpty == true ? _connectedDevice!.platformName : 'ESP32 Safe Node');
+  String? get connectedDeviceId => _isVirtualNodeActive
+      ? 'ESP32_SIMULATED_01'
+      : _connectedDevice?.remoteId.str;
+  String? get connectedDeviceName => _isVirtualNodeActive
+      ? 'ESP32_SAFE_01 (Virtual)'
+      : (_connectedDevice?.platformName.isNotEmpty == true
+            ? _connectedDevice!.platformName
+            : 'ESP32 Safe Node');
 
   void _initBluetoothListeners() {
     // Skip hardware BLE platform initialization when executing under test harness
@@ -88,12 +94,12 @@ class BleService {
     } catch (_) {}
   }
 
-
-
   // ---------------------------------------------------------------------------
   // BLE Scanning
   // ---------------------------------------------------------------------------
-  Future<void> startScan({Duration timeout = const Duration(seconds: 12)}) async {
+  Future<void> startScan({
+    Duration timeout = const Duration(seconds: 12),
+  }) async {
     try {
       final isSupported = await FlutterBluePlus.isSupported;
       if (!isSupported) {
@@ -115,7 +121,8 @@ class BleService {
 
           final hasOurService = r.advertisementData.serviceUuids.any(
             (u) =>
-                u.str.toLowerCase() == AppConstants.bleServiceUuid.toLowerCase() ||
+                u.str.toLowerCase() ==
+                    AppConstants.bleServiceUuid.toLowerCase() ||
                 u.str.toLowerCase().contains('fff0'),
           );
 
@@ -125,18 +132,22 @@ class BleService {
 
           if (name.isEmpty) {
             final idStr = r.device.remoteId.str;
-            name = 'BLE Device (${idStr.length > 5 ? idStr.substring(0, 5) : idStr})';
+            name =
+                'BLE Device (${idStr.length > 5 ? idStr.substring(0, 5) : idStr})';
           }
 
           final deviceModel = DeviceModel(
             id: r.device.remoteId.str,
             name: name,
             rssi: r.rssi,
-            isConnected: _connectedDevice?.remoteId.str == r.device.remoteId.str,
+            isConnected:
+                _connectedDevice?.remoteId.str == r.device.remoteId.str,
             lastSeen: DateTime.now().millisecondsSinceEpoch,
           );
 
-          final existingIdx = foundDevices.indexWhere((d) => d.id == deviceModel.id);
+          final existingIdx = foundDevices.indexWhere(
+            (d) => d.id == deviceModel.id,
+          );
           if (existingIdx >= 0) {
             foundDevices[existingIdx] = deviceModel;
           } else {
@@ -208,7 +219,6 @@ class BleService {
         autoConnect: false,
       );
 
-
       // Negotiate optimal MTU for fast JSON packets
       try {
         await device.requestMtu(256);
@@ -221,23 +231,32 @@ class BleService {
 
       // Discover Services
       final services = await device.discoverServices();
-      debugPrint("[BleService] Discovered ${services.length} services on ${device.remoteId}");
+      debugPrint(
+        "[BleService] Discovered ${services.length} services on ${device.remoteId}",
+      );
       for (final service in services) {
         final sUuid = service.uuid.toString().toLowerCase();
         debugPrint("[BleService] Service: $sUuid");
-        if (sUuid == AppConstants.bleServiceUuid.toLowerCase() || sUuid.contains('fff0')) {
+        if (sUuid == AppConstants.bleServiceUuid.toLowerCase() ||
+            sUuid.contains('fff0')) {
           for (final char in service.characteristics) {
             final uuid = char.uuid.toString().toLowerCase();
             debugPrint("[BleService]   Found Characteristic: $uuid");
-            if (uuid == AppConstants.charTelemetryUuid.toLowerCase() || uuid.contains('fff1')) {
+            if (uuid == AppConstants.charTelemetryUuid.toLowerCase() ||
+                uuid.contains('fff1')) {
               _telemetryChar = char;
-            } else if (uuid == AppConstants.charGpsUuid.toLowerCase() || uuid.contains('fff2')) {
+            } else if (uuid == AppConstants.charGpsUuid.toLowerCase() ||
+                uuid.contains('fff2')) {
               _gpsChar = char;
-            } else if (uuid == AppConstants.charBatteryUuid.toLowerCase() || uuid.contains('fff3')) {
+            } else if (uuid == AppConstants.charBatteryUuid.toLowerCase() ||
+                uuid.contains('fff3')) {
               _batteryChar = char;
-            } else if (uuid == AppConstants.charSafetyStatusUuid.toLowerCase() || uuid.contains('fff4')) {
+            } else if (uuid ==
+                    AppConstants.charSafetyStatusUuid.toLowerCase() ||
+                uuid.contains('fff4')) {
               _safetyStatusChar = char;
-            } else if (uuid == AppConstants.charSosUuid.toLowerCase() || uuid.contains('fff5')) {
+            } else if (uuid == AppConstants.charSosUuid.toLowerCase() ||
+                uuid.contains('fff5')) {
               _sosChar = char;
             }
           }
@@ -256,7 +275,9 @@ class BleService {
   Future<void> _subscribeToNotifications() async {
     // 1. Subscribe to Telemetry Characteristic
     if (_telemetryChar != null) {
-      debugPrint("[BleService] Subscribing to telemetry notifications on ${_telemetryChar!.uuid}...");
+      debugPrint(
+        "[BleService] Subscribing to telemetry notifications on ${_telemetryChar!.uuid}...",
+      );
       _telemetrySub?.cancel();
       _telemetrySub = _telemetryChar!.onValueReceived.listen((bytes) {
         if (bytes.isNotEmpty) {
@@ -321,7 +342,6 @@ class BleService {
     }
   }
 
-
   void _parseTelemetryBytes(List<int> bytes) {
     try {
       final jsonStr = utf8.decode(bytes).trim();
@@ -369,7 +389,9 @@ class BleService {
 
   Future<bool> testBuzzer() async {
     if (_safetyStatusChar == null || _connectedDevice == null) {
-      debugPrint("[BleService] Cannot test buzzer: ESP32 not connected or safety char missing");
+      debugPrint(
+        "[BleService] Cannot test buzzer: ESP32 not connected or safety char missing",
+      );
       return false;
     }
     try {
@@ -399,7 +421,6 @@ class BleService {
     }
     return sent;
   }
-
 
   // ---------------------------------------------------------------------------
   // Disconnection & Auto-Reconnection Management
@@ -476,7 +497,9 @@ class BleService {
 
       // Natural sensor jitter
       final random = Random();
-      temp = double.parse((temp + (random.nextInt(11) - 5) / 50.0).toStringAsFixed(1));
+      temp = double.parse(
+        (temp + (random.nextInt(11) - 5) / 50.0).toStringAsFixed(1),
+      );
       if (temp < 36.2) temp = 36.5;
       if (temp > 37.2) temp = 36.9;
 

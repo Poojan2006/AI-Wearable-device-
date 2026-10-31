@@ -17,8 +17,8 @@ class SyncQueueItem {
     int? createdAt,
     this.retryCount = 0,
     this.status = 'PENDING',
-  })  : id = id ?? const Uuid().v4(),
-        createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
+  }) : id = id ?? const Uuid().v4(),
+       createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
 
   factory SyncQueueItem.fromSqlite(Map<String, dynamic> map) {
     return SyncQueueItem(
@@ -26,7 +26,9 @@ class SyncQueueItem {
       recordType: map['record_type']?.toString() ?? 'telemetry',
       recordId: map['record_id']?.toString() ?? '',
       payload: map['payload']?.toString() ?? '{}',
-      createdAt: (map['created_at'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
+      createdAt:
+          (map['created_at'] as num?)?.toInt() ??
+          DateTime.now().millisecondsSinceEpoch,
       retryCount: (map['retry_count'] as num?)?.toInt() ?? 0,
       status: map['status']?.toString() ?? 'PENDING',
     );

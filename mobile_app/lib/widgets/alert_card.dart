@@ -1,36 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/alert_model.dart';
 import '../models/prediction_result.dart';
+import '../core/theme/app_theme.dart';
 
 class AlertCard extends StatelessWidget {
   final AlertItem alert;
   final VoidCallback? onAcknowledge;
 
-  const AlertCard({
-    super.key,
-    required this.alert,
-    this.onAcknowledge,
-  });
+  const AlertCard({super.key, required this.alert, this.onAcknowledge});
 
   @override
   Widget build(BuildContext context) {
     final status = SafetyStatus.fromString(alert.severity);
     final color = status.color;
-    final timeStr = DateFormat('MMM d, hh:mm:ss a').format(
-      DateTime.fromMillisecondsSinceEpoch(alert.timestamp),
-    );
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = alert.acknowledged
+        ? AppTheme.border(context)
+        : color.withAlpha(isDark ? 140 : 100);
+    final timeStr = DateFormat('MMM d, hh:mm a')
+        .format(DateTime.fromMillisecondsSinceEpoch(alert.timestamp));
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(14),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: alert.acknowledged ? const Color(0xFF334155) : color.withAlpha(180),
-          width: alert.acknowledged ? 1 : 1.5,
+          color: borderColor,
+          width: alert.acknowledged ? 1 : 1.4,
         ),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withAlpha(4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,9 +53,12 @@ class AlertCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: color.withAlpha(38),
+                        color: color.withAlpha(isDark ? 36 : 22),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -53,65 +66,90 @@ class AlertCard extends StatelessWidget {
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.w900,
-                          fontSize: 10,
+                          fontSize: 9.5,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         alert.type,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary(context),
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: 12.5,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Text(
                 timeStr,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                style: TextStyle(
+                  color: AppTheme.textSubMuted(context),
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
 
-          // Message & Worker
+          // Message
           Text(
             alert.message,
-            style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 12, height: 1.3),
+            style: TextStyle(
+              color: AppTheme.textPrimary(context),
+              fontSize: 12.5,
+              height: 1.35,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Footer: Worker ID + Acknowledge Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  "Worker: ${alert.workerName} (${alert.workerId})",
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.badge_outlined,
+                      size: 13,
+                      color: AppTheme.textSub(context),
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        "${alert.workerName} (${alert.workerId})",
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppTheme.textSub(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (alert.acknowledged)
-                const Row(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 14),
-                    SizedBox(width: 4),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppTheme.safeGreen,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
                       "ACKNOWLEDGED",
                       style: TextStyle(
-                        color: Color(0xFF10B981),
+                        color: AppTheme.safeGreen,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
@@ -122,10 +160,16 @@ class AlertCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onAcknowledge,
                   icon: const Icon(Icons.done_all_rounded, size: 14),
-                  label: const Text("ACKNOWLEDGE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                  label: const Text(
+                    "ACKNOWLEDGE",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: color,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),

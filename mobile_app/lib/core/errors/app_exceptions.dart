@@ -17,7 +17,6 @@ class AppDatabaseException extends AppException {
   AppDatabaseException(super.message, {super.code, super.details});
 }
 
-
 class AuthException extends AppException {
   AuthException(super.message, {super.code, super.details});
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class BatteryIndicator extends StatelessWidget {
   final int percentage;
   final bool showLabel;
@@ -12,30 +14,32 @@ class BatteryIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color = const Color(0xFF10B981);
+    Color color = AppTheme.safeGreen;
     IconData icon = Icons.battery_full_rounded;
 
     if (percentage <= 20) {
-      color = const Color(0xFFEF4444);
+      color = AppTheme.dangerRed;
       icon = Icons.battery_alert_rounded;
     } else if (percentage <= 50) {
-      color = const Color(0xFFF59E0B);
+      color = AppTheme.warningAmber;
       icon = Icons.battery_3_bar_rounded;
     } else if (percentage <= 80) {
       icon = Icons.battery_5_bar_rounded;
     }
 
+    final isDark = AppTheme.isDark(context);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withAlpha(60), width: 1),
+        color: color.withAlpha(isDark ? 30 : 20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withAlpha(isDark ? 80 : 60), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
+          Icon(icon, color: color, size: 13),
           if (showLabel) ...[
             const SizedBox(width: 4),
             Text(
@@ -43,7 +47,7 @@ class BatteryIndicator extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w800,
-                fontSize: 11,
+                fontSize: 10.5,
                 letterSpacing: 0.2,
               ),
             ),

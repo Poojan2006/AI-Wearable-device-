@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../services/ble_service.dart';
 import '../../models/device_model.dart';
+import '../../core/theme/app_theme.dart';
 
 class DeviceScanScreen extends StatefulWidget {
   const DeviceScanScreen({super.key});
@@ -29,7 +31,7 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("BLE Scan Notice: $e"),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: AppTheme.dangerRed,
           ),
         );
       }
@@ -46,7 +48,7 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Connected to ${device.name}"),
-            backgroundColor: const Color(0xFF10B981),
+            backgroundColor: AppTheme.safeGreen,
           ),
         );
         Navigator.pop(context);
@@ -56,7 +58,7 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Connection failed: $e"),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: AppTheme.dangerRed,
           ),
         );
       }
@@ -67,9 +69,15 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final textPrimary = AppTheme.textPrimary(context);
+    final textSub = AppTheme.textSub(context);
+
     return Scaffold(
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
-        title: const Text("ESP32 Device Scanner"),
+        title: const Text("ESP32 BLE Scanner"),
         actions: [
           if (_isScanning)
             const Padding(
@@ -77,7 +85,10 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(color: Color(0xFFF97316), strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  color: AppTheme.primary,
+                  strokeWidth: 2,
+                ),
               ),
             )
           else
@@ -90,20 +101,23 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
       body: SafeArea(
         child: Column(
           children: [
-
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Icon(Icons.bluetooth_searching_rounded, size: 15, color: Color(0xFF38BDF8)),
-                  SizedBox(width: 6),
+                  const Icon(
+                    Icons.bluetooth_searching_rounded,
+                    size: 16,
+                    color: AppTheme.primary,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    "DISCOVERED BLUETOOTH LE NODES",
+                    "DISCOVERED WEARABLE HARDWARE NODES",
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
-                      color: Color(0xFF94A3B8),
+                      color: textSub,
                     ),
                   ),
                 ],
@@ -119,28 +133,46 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
 
                   if (devices.isEmpty) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.bluetooth_disabled_rounded, size: 48, color: Colors.white.withAlpha(51)),
-                          const SizedBox(height: 12),
-                          const Text(
-                            "No ESP32 devices found in range",
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: _startScan,
-                            child: const Text("Scan Again"),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bluetooth_disabled_rounded,
+                              size: 54,
+                              color: textSub.withAlpha(80),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              "No ESP32 devices found in range",
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Ensure your wearable ESP32 is powered on and within Bluetooth range.",
+                              style: TextStyle(color: textSub, fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            ElevatedButton.icon(
+                              onPressed: _startScan,
+                              icon: const Icon(Icons.refresh_rounded, size: 16),
+                              label: const Text("Scan Again"),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }
 
                   return ListView.builder(
                     itemCount: devices.length,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemBuilder: (context, index) {
                       final d = devices[index];
                       final isCurrent = _bleService.connectedDeviceId == d.id;
@@ -148,34 +180,43 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
 
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF131D33),
-                          borderRadius: BorderRadius.circular(14),
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isCurrent
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFF243350),
-                            width: isCurrent ? 1.4 : 1,
+                                ? AppTheme.safeGreen
+                                : AppTheme.border(context),
+                            width: isCurrent ? 1.5 : 1,
                           ),
+                          boxShadow: [
+                            if (!isDark)
+                              BoxShadow(
+                                color: Colors.black.withAlpha(4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                          ],
                         ),
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: (isCurrent ? const Color(0xFF10B981) : const Color(0xFF38BDF8))
-                                    .withAlpha(25),
+                                color:
+                                    (isCurrent
+                                            ? AppTheme.safeGreen
+                                            : AppTheme.primary)
+                                        .withAlpha(isDark ? 30 : 20),
                                 shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: (isCurrent ? const Color(0xFF10B981) : const Color(0xFF38BDF8))
-                                      .withAlpha(60),
-                                ),
                               ),
                               child: Icon(
                                 Icons.bluetooth_rounded,
-                                color: isCurrent ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
-                                size: 18,
+                                color: isCurrent
+                                    ? AppTheme.safeGreen
+                                    : AppTheme.primary,
+                                size: 20,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -185,16 +226,16 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
                                 children: [
                                   Text(
                                     d.name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      color: Colors.white,
+                                      color: textPrimary,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     "ID: ${d.id}  •  RSSI: ${d.rssi} dBm",
-                                    style: const TextStyle(
-                                      color: Color(0xFF94A3B8),
+                                    style: TextStyle(
+                                      color: textSub,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -208,27 +249,56 @@ class _DeviceScanScreenState extends State<DeviceScanScreen> {
                                   setState(() {});
                                 },
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFFF43F5E),
-                                  side: const BorderSide(color: Color(0xFFF43F5E)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  foregroundColor: AppTheme.dangerRed,
+                                  side: const BorderSide(
+                                    color: AppTheme.dangerRed,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
-                                child: const Text("DISCONNECT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                                child: const Text(
+                                  "DISCONNECT",
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                               )
                             else
                               ElevatedButton(
-                                onPressed: isConnecting ? null : () => _connect(d),
+                                onPressed: isConnecting
+                                    ? null
+                                    : () => _connect(d),
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                                 child: isConnecting
                                     ? const SizedBox(
                                         width: 14,
                                         height: 14,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       )
-                                    : const Text("CONNECT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                                    : const Text(
+                                        "CONNECT",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                               ),
                           ],
                         ),

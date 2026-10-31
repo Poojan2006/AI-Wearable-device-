@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+
 import '../models/user_model.dart';
 import '../database/local_database.dart';
 import '../core/errors/app_exceptions.dart';
@@ -35,7 +37,9 @@ class AuthService {
           databaseURL: AppConstants.rtdbUrl,
         );
         _isFirebaseAvailable = true;
-        debugPrint("[AuthService] Firebase Auth & Regional RTDB initialized (${AppConstants.rtdbUrl})");
+        debugPrint(
+          "[AuthService] Firebase Auth & Regional RTDB initialized (${AppConstants.rtdbUrl})",
+        );
       }
     } catch (e) {
       debugPrint("[AuthService] Firebase init error: $e");
@@ -57,13 +61,17 @@ class AuthService {
     if (_firebaseAuth != null) {
       _firebaseAuth!.authStateChanges().listen((fbUser) async {
         if (fbUser == null) {
-          if (_currentUser != null && !_currentUser!.uid.startsWith('offline_')) {
+          if (_currentUser != null &&
+              !_currentUser!.uid.startsWith('offline_')) {
             _currentUser = null;
             _userController.add(null);
           }
         } else {
           try {
-            final profile = await _fetchUserProfile(fbUser.uid, fbUser.email ?? '');
+            final profile = await _fetchUserProfile(
+              fbUser.uid,
+              fbUser.email ?? '',
+            );
             _currentUser = profile;
             await LocalDatabase.instance.saveUser(profile);
             _userController.add(profile);
@@ -91,7 +99,9 @@ class AuthService {
       }
 
       // If mock/demo credentials used in offline lab test
-      final role = cleanEmail.contains('sup') ? UserRole.supervisor : UserRole.worker;
+      final role = cleanEmail.contains('sup')
+          ? UserRole.supervisor
+          : UserRole.worker;
       final mockUser = AppUser(
         uid: 'offline_${cleanEmail.replaceAll('@', '_').replaceAll('.', '_')}',
         email: cleanEmail,
@@ -117,7 +127,10 @@ class AuthService {
         throw AuthException('Login failed: User record is empty.');
       }
 
-      final profile = await _fetchUserProfile(user.uid, user.email ?? cleanEmail);
+      final profile = await _fetchUserProfile(
+        user.uid,
+        user.email ?? cleanEmail,
+      );
       _currentUser = profile;
       await LocalDatabase.instance.saveUser(profile);
       _userController.add(profile);
@@ -125,11 +138,16 @@ class AuthService {
     } on fb_auth.FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
         // Auto-provision demo account to Firebase Auth & RTDB
-        if (cleanEmail == 'worker@safeguard.com' || cleanEmail == 'supervisor@safeguard.com') {
+        if (cleanEmail == 'worker@safeguard.com' ||
+            cleanEmail == 'supervisor@safeguard.com') {
           try {
-            final role = cleanEmail.contains('sup') ? UserRole.supervisor : UserRole.worker;
+            final role = cleanEmail.contains('sup')
+                ? UserRole.supervisor
+                : UserRole.worker;
             final created = await register(
-              name: role == UserRole.supervisor ? 'Site Supervisor' : 'Field Worker',
+              name: role == UserRole.supervisor
+                  ? 'Site Supervisor'
+                  : 'Field Worker',
               email: cleanEmail,
               password: password,
               role: role,
@@ -150,7 +168,9 @@ class AuthService {
           _userController.add(cached);
           return cached;
         }
-        throw AuthException('Network unavailable and no cached offline session found for this user.');
+        throw AuthException(
+          'Network unavailable and no cached offline session found for this user.',
+        );
       }
       throw AuthException(e.message ?? 'Authentication failed', code: e.code);
     } catch (e) {
@@ -195,8 +215,8 @@ class AuthService {
 
       final assignedWorkerId = role == UserRole.worker
           ? (workerId != null && workerId.trim().isNotEmpty
-              ? workerId.trim()
-              : 'W-${user.uid.substring(0, 5).toUpperCase()}')
+                ? workerId.trim()
+                : 'W-${user.uid.substring(0, 5).toUpperCase()}')
           : '';
 
       final newUser = AppUser(
@@ -219,14 +239,16 @@ class AuthService {
         });
 
         if (role == UserRole.worker) {
-          await _firebaseDb!.ref('${AppConstants.rtdbWorkers}/${newUser.workerId}').set({
-            'name': newUser.name,
-            'workerId': newUser.workerId,
-            'status': 'SAFE',
-            'deviceId': 'ESP32_SAFE_01',
-            'lastSeen': ServerValue.timestamp,
-            'lastUpdated': ServerValue.timestamp,
-          });
+          await _firebaseDb!
+              .ref('${AppConstants.rtdbWorkers}/${newUser.workerId}')
+              .set({
+                'name': newUser.name,
+                'workerId': newUser.workerId,
+                'status': 'SAFE',
+                'deviceId': 'ESP32_SAFE_01',
+                'lastSeen': ServerValue.timestamp,
+                'lastUpdated': ServerValue.timestamp,
+              });
         }
       }
 
@@ -254,8 +276,9 @@ class AuthService {
     }
 
     try {
-      final snapshot =
-          await _firebaseDb!.ref('${AppConstants.rtdbUsers}/$uid').get();
+      final snapshot = await _firebaseDb!
+          .ref('${AppConstants.rtdbUsers}/$uid')
+          .get();
       if (snapshot.exists && snapshot.value is Map) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
         return AppUser.fromJson(data, uid: uid);

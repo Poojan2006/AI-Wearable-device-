@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/constants/app_constants.dart';
 
 enum SafetyStatus {
@@ -96,7 +97,9 @@ class PredictionResult {
       'confidence': confidence,
       'reason': reason,
       'contributingFactors': contributingFactors,
-      'probabilities': probabilities.map((k, v) => MapEntry(k.toDisplayString(), v)),
+      'probabilities': probabilities.map(
+        (k, v) => MapEntry(k.toDisplayString(), v),
+      ),
       'timestamp': timestamp,
     };
   }
@@ -115,12 +118,15 @@ class PredictionResult {
       status: status,
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       reason: json['reason']?.toString() ?? 'No explanation available',
-      contributingFactors: (json['contributingFactors'] as List<dynamic>?)
+      contributingFactors:
+          (json['contributingFactors'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
       probabilities: probs,
-      timestamp: (json['timestamp'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
+      timestamp:
+          (json['timestamp'] as num?)?.toInt() ??
+          DateTime.now().millisecondsSinceEpoch,
     );
   }
 }

@@ -4,7 +4,8 @@ class AlertItem {
   final String id;
   final String workerId;
   final String workerName;
-  final String type; // 'SOS', 'FALL_DETECTED', 'TOXIC_GAS', 'HYPOXIA', 'EXTREME_TEMP'
+  final String
+  type; // 'SOS', 'FALL_DETECTED', 'TOXIC_GAS', 'HYPOXIA', 'EXTREME_TEMP'
   final String message;
   final String severity; // 'WARNING', 'DANGER', 'EMERGENCY'
   final int timestamp;
@@ -21,8 +22,8 @@ class AlertItem {
     int? timestamp,
     this.acknowledged = false,
     this.synced = false,
-  })  : id = id ?? const Uuid().v4(),
-        timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
+  }) : id = id ?? const Uuid().v4(),
+       timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   factory AlertItem.fromJson(Map<String, dynamic> json, {String? id}) {
     return AlertItem(
@@ -32,7 +33,9 @@ class AlertItem {
       type: json['type']?.toString() ?? 'ALERT',
       message: json['message']?.toString() ?? '',
       severity: json['severity']?.toString() ?? 'WARNING',
-      timestamp: (json['timestamp'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
+      timestamp:
+          (json['timestamp'] as num?)?.toInt() ??
+          DateTime.now().millisecondsSinceEpoch,
       acknowledged: json['acknowledged'] == true || json['acknowledged'] == 1,
       synced: json['synced'] == true || json['synced'] == 1,
     );
@@ -73,7 +76,9 @@ class AlertItem {
       type: map['type']?.toString() ?? 'ALERT',
       message: map['message']?.toString() ?? '',
       severity: map['severity']?.toString() ?? 'WARNING',
-      timestamp: (map['timestamp'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
+      timestamp:
+          (map['timestamp'] as num?)?.toInt() ??
+          DateTime.now().millisecondsSinceEpoch,
       acknowledged: (map['acknowledged'] as num?)?.toInt() == 1,
       synced: (map['synced'] as num?)?.toInt() == 1,
     );

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../repositories/supervisor_repository.dart';
 import '../../models/prediction_result.dart';
+import '../../core/theme/app_theme.dart';
 import 'worker_details_screen.dart';
 
 class WorkerMapScreen extends StatefulWidget {
@@ -17,11 +19,17 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final textPrimary = AppTheme.textPrimary(context);
+
     return Scaffold(
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
         title: const Text("Fleet Geolocation Map"),
         actions: [
           IconButton(
+            tooltip: "Reset View",
             icon: const Icon(Icons.my_location_rounded),
             onPressed: () {
               _mapController.move(const LatLng(17.4485, 78.3742), 16.0);
@@ -41,31 +49,44 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
 
             return Marker(
               point: point,
-              width: 80,
+              width: 90,
               height: 80,
               child: GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => WorkerDetailsScreen(worker: w)),
+                    MaterialPageRoute(
+                      builder: (_) => WorkerDetailsScreen(worker: w),
+                    ),
                   );
                 },
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: status.color),
+                        border: Border.all(color: status.color, width: 1.2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(20),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                       child: Text(
                         w.name.split(' ').first,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textPrimary,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -76,8 +97,8 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: status.color.withAlpha(128),
-                            blurRadius: 10,
+                            color: status.color.withAlpha(120),
+                            blurRadius: 8,
                             spreadRadius: 2,
                           ),
                         ],
@@ -85,7 +106,7 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
                       child: const Icon(
                         Icons.person_pin_circle_rounded,
                         color: Colors.white,
-                        size: 24,
+                        size: 20,
                       ),
                     ),
                   ],
@@ -104,7 +125,8 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.workersafety.worker_safety_app',
                   ),
                   MarkerLayer(markers: markers),
@@ -113,19 +135,24 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
 
               // Floating Map Legend
               Positioned(
-                bottom: 24,
-                left: 14,
-                right: 14,
+                bottom: 20,
+                left: 16,
+                right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF090D1A).withAlpha(235),
+                    color: isDark
+                        ? const Color(0xFF0F172A).withAlpha(240)
+                        : Colors.white.withAlpha(240),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF243350), width: 1.2),
+                    border: Border.all(color: AppTheme.border(context)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(120),
-                        blurRadius: 16,
+                        color: Colors.black.withAlpha(30),
+                        blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
                     ],
@@ -133,10 +160,10 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildLegendItem(const Color(0xFF10B981), "Safe"),
-                      _buildLegendItem(const Color(0xFFF59E0B), "Warning"),
-                      _buildLegendItem(const Color(0xFFEF4444), "Danger"),
-                      _buildLegendItem(const Color(0xFFF43F5E), "SOS Alert"),
+                      _buildLegendItem(AppTheme.safeGreen, "Safe"),
+                      _buildLegendItem(AppTheme.warningAmber, "Warning"),
+                      _buildLegendItem(AppTheme.dangerRed, "Danger"),
+                      _buildLegendItem(const Color(0xFFE11D48), "SOS Alert"),
                     ],
                   ),
                 ),
@@ -157,23 +184,16 @@ class _WorkerMapScreenState extends State<WorkerMapScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withAlpha(160),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
+            boxShadow: [BoxShadow(color: color.withAlpha(160), blurRadius: 4)],
           ),
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.textPrimary(context),
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
           ),
         ),
       ],

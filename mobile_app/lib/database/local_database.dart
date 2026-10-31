@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
 import '../models/user_model.dart';
 import '../models/telemetry_model.dart';
 import '../models/alert_model.dart';
@@ -25,11 +27,7 @@ class LocalDatabase {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+    return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -70,7 +68,9 @@ class LocalDatabase {
     ''');
 
     await db.execute('CREATE INDEX idx_telemetry_synced ON telemetry(synced)');
-    await db.execute('CREATE INDEX idx_telemetry_timestamp ON telemetry(timestamp DESC)');
+    await db.execute(
+      'CREATE INDEX idx_telemetry_timestamp ON telemetry(timestamp DESC)',
+    );
 
     // 3. Alerts Table
     await db.execute('''
@@ -147,7 +147,11 @@ class LocalDatabase {
   Future<AppUser?> getCachedUser() async {
     try {
       final db = await database;
-      final result = await db.query('users', orderBy: 'cached_at DESC', limit: 1);
+      final result = await db.query(
+        'users',
+        orderBy: 'cached_at DESC',
+        limit: 1,
+      );
       if (result.isNotEmpty) {
         return AppUser.fromSqlite(result.first);
       }
@@ -201,7 +205,10 @@ class LocalDatabase {
     }
   }
 
-  Future<List<Telemetry>> getTelemetryHistory(String workerId, {int limit = 50}) async {
+  Future<List<Telemetry>> getTelemetryHistory(
+    String workerId, {
+    int limit = 50,
+  }) async {
     try {
       final db = await database;
       final result = await db.query(
@@ -249,12 +256,18 @@ class LocalDatabase {
   Future<int> getPendingSyncCount() async {
     try {
       final db = await database;
-      final telemetryCount = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM telemetry WHERE synced = 0'),
-      ) ?? 0;
-      final alertCount = Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM alerts WHERE synced = 0'),
-      ) ?? 0;
+      final telemetryCount =
+          Sqflite.firstIntValue(
+            await db.rawQuery(
+              'SELECT COUNT(*) FROM telemetry WHERE synced = 0',
+            ),
+          ) ??
+          0;
+      final alertCount =
+          Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM alerts WHERE synced = 0'),
+          ) ??
+          0;
       return telemetryCount + alertCount;
     } catch (_) {
       return 0;
@@ -277,7 +290,10 @@ class LocalDatabase {
     }
   }
 
-  Future<List<AlertItem>> getRecentAlerts(String workerId, {int limit = 20}) async {
+  Future<List<AlertItem>> getRecentAlerts(
+    String workerId, {
+    int limit = 20,
+  }) async {
     try {
       final db = await database;
       final result = await db.query(
@@ -380,11 +396,14 @@ class LocalDatabase {
   Future<void> incrementSyncRetry(String id) async {
     try {
       final db = await database;
-      await db.rawUpdate('''
+      await db.rawUpdate(
+        '''
         UPDATE sync_queue 
         SET retry_count = retry_count + 1, status = 'FAILED'
         WHERE id = ?
-      ''', [id]);
+      ''',
+        [id],
+      );
     } catch (e) {
       throw AppDatabaseException('Failed to increment sync retry: $e');
     }
@@ -393,21 +412,20 @@ class LocalDatabase {
   // ---------------------------------------------------------------------------
   // Predictions Log
   // ---------------------------------------------------------------------------
-  Future<void> insertPrediction(String telemetryId, PredictionResult pred) async {
+  Future<void> insertPrediction(
+    String telemetryId,
+    PredictionResult pred,
+  ) async {
     try {
       final db = await database;
-      await db.insert(
-        'predictions',
-        {
-          'id': '${telemetryId}_pred',
-          'telemetry_id': telemetryId,
-          'status': pred.status.toDisplayString(),
-          'confidence': pred.confidence,
-          'reason': pred.reason,
-          'timestamp': pred.timestamp,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await db.insert('predictions', {
+        'id': '${telemetryId}_pred',
+        'telemetry_id': telemetryId,
+        'status': pred.status.toDisplayString(),
+        'confidence': pred.confidence,
+        'reason': pred.reason,
+        'timestamp': pred.timestamp,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (_) {}
   }
 

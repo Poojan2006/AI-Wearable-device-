@@ -20,3 +20,9 @@ mobile_app/android/build/
 *.png
 !mobile_app/assets/**
 !mobile_app/android/app/src/main/res/**
+
+# OS & Editor
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/

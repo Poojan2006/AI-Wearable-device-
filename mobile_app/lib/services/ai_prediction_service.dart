@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import '../models/telemetry_model.dart';
 import '../models/prediction_result.dart';
 import 'ml/compiled_random_forest.dart';
@@ -20,11 +21,21 @@ class AiPredictionService {
 
     // If a sensor is not connected (value 0), substitute nominal baseline
     // so the classifier evaluates the sensors that ARE physically connected (MPU6050, DHT, SOS)
-    final double safeTemp = telemetry.temperature > 0 ? telemetry.temperature : 26.5;
-    final double safeHeart = telemetry.heartRate > 0 ? telemetry.heartRate.toDouble() : 75.0;
-    final double safeSpO2 = telemetry.spo2 > 0 ? telemetry.spo2.toDouble() : 98.0;
-    final double safeGas = telemetry.gasLevel > 0 ? telemetry.gasLevel.toDouble() : 45.0;
-    final double safeHumidity = telemetry.humidity > 0 ? telemetry.humidity : 50.0;
+    final double safeTemp = telemetry.temperature > 0
+        ? telemetry.temperature
+        : 26.5;
+    final double safeHeart = telemetry.heartRate > 0
+        ? telemetry.heartRate.toDouble()
+        : 75.0;
+    final double safeSpO2 = telemetry.spo2 > 0
+        ? telemetry.spo2.toDouble()
+        : 98.0;
+    final double safeGas = telemetry.gasLevel > 0
+        ? telemetry.gasLevel.toDouble()
+        : 45.0;
+    final double safeHumidity = telemetry.humidity > 0
+        ? telemetry.humidity
+        : 50.0;
 
     final List<double> features = [
       safeTemp,
@@ -52,7 +63,9 @@ class AiPredictionService {
     }
 
     // 3. Average Probabilities across the Forest
-    final List<double> finalProbs = accumulatedProbs.map((p) => p / numTrees).toList();
+    final List<double> finalProbs = accumulatedProbs
+        .map((p) => p / numTrees)
+        .toList();
 
     // 4. ArgMax Class Selection & Model Confidence
     int bestClassIdx = 0;
@@ -89,7 +102,11 @@ class AiPredictionService {
 
     // 5. Generate Ground-Truth Feature Explanations
     final factors = _extractContributingFactors(telemetry, predictedStatus);
-    final reason = _generateHumanReadableReason(predictedStatus, factors, telemetry);
+    final reason = _generateHumanReadableReason(
+      predictedStatus,
+      factors,
+      telemetry,
+    );
 
     final Map<SafetyStatus, double> probMap = {
       SafetyStatus.safe: finalProbs[0],
@@ -150,11 +167,15 @@ class AiPredictionService {
       factors.add("Hardware SOS emergency button depressed");
     }
     if (t.fallDetected) {
-      factors.add("Abrupt gravitational shock / worker fall event confirmed by MPU6050");
+      factors.add(
+        "Abrupt gravitational shock / worker fall event confirmed by MPU6050",
+      );
     }
     if (t.gasLevel > 0) {
       if (t.gasLevel > 350) {
-        factors.add("Atmospheric toxic/combustible gas spike (${t.gasLevel} PPM, limit: 150 PPM)");
+        factors.add(
+          "Atmospheric toxic/combustible gas spike (${t.gasLevel} PPM, limit: 150 PPM)",
+        );
       } else if (t.gasLevel > 180) {
         factors.add("Elevated ambient gas concentration (${t.gasLevel} PPM)");
       }
@@ -162,7 +183,9 @@ class AiPredictionService {
 
     if (t.spo2 > 0) {
       if (t.spo2 < 90) {
-        factors.add("Acute hypoxia: SpO2 critically low (${t.spo2}%, nominal >= 95%)");
+        factors.add(
+          "Acute hypoxia: SpO2 critically low (${t.spo2}%, nominal >= 95%)",
+        );
       } else if (t.spo2 < 94) {
         factors.add("Borderline oxygen desaturation (${t.spo2}%)");
       }
@@ -170,11 +193,17 @@ class AiPredictionService {
 
     if (t.temperature > 0.0) {
       if (t.temperature > 38.5) {
-        factors.add("Hyperthermia / Heat stroke condition (${t.temperature.toStringAsFixed(1)}°C)");
+        factors.add(
+          "Hyperthermia / Heat stroke condition (${t.temperature.toStringAsFixed(1)}°C)",
+        );
       } else if (t.temperature < 35.0) {
-        factors.add("Hypothermia alert (${t.temperature.toStringAsFixed(1)}°C)");
+        factors.add(
+          "Hypothermia alert (${t.temperature.toStringAsFixed(1)}°C)",
+        );
       } else if (t.temperature > 37.5) {
-        factors.add("Elevated ambient temperature (${t.temperature.toStringAsFixed(1)}°C)");
+        factors.add(
+          "Elevated ambient temperature (${t.temperature.toStringAsFixed(1)}°C)",
+        );
       }
     }
 
@@ -189,7 +218,9 @@ class AiPredictionService {
     }
 
     if (t.humidity > 80.0) {
-      factors.add("Extreme atmospheric humidity (${t.humidity.toStringAsFixed(1)}%)");
+      factors.add(
+        "Extreme atmospheric humidity (${t.humidity.toStringAsFixed(1)}%)",
+      );
     }
 
     if (t.battery < 15) {
@@ -197,7 +228,9 @@ class AiPredictionService {
     }
 
     if (factors.isEmpty && status == SafetyStatus.safe) {
-      factors.add("Hardware sensor readings (DHT & MPU6050) are within nominal limits.");
+      factors.add(
+        "Hardware sensor readings (DHT & MPU6050) are within nominal limits.",
+      );
     }
 
     return factors;
@@ -213,7 +246,9 @@ class AiPredictionService {
     }
 
     final StringBuffer sb = StringBuffer();
-    sb.write("${status.toDisplayString()} DETECTED by On-Device Random Forest AI.\n");
+    sb.write(
+      "${status.toDisplayString()} DETECTED by On-Device Random Forest AI.\n",
+    );
     sb.write("Identified contributing hazard indicators:\n");
 
     for (final factor in factors) {
@@ -221,11 +256,17 @@ class AiPredictionService {
     }
 
     if (status == SafetyStatus.emergency) {
-      sb.write("IMMEDIATE ACTION: Evacuate worker and dispatch emergency response team.");
+      sb.write(
+        "IMMEDIATE ACTION: Evacuate worker and dispatch emergency response team.",
+      );
     } else if (status == SafetyStatus.danger) {
-      sb.write("ACTION REQUIRED: Relocate to designated safe zone immediately.");
+      sb.write(
+        "ACTION REQUIRED: Relocate to designated safe zone immediately.",
+      );
     } else {
-      sb.write("RECOMMENDED: Monitor telemetry, hydrate, and verify atmospheric ventilation.");
+      sb.write(
+        "RECOMMENDED: Monitor telemetry, hydrate, and verify atmospheric ventilation.",
+      );
     }
 
     return sb.toString().trim();

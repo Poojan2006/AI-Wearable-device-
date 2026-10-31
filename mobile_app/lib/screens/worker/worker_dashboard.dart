@@ -1,27 +1,33 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:intl/intl.dart';
+
 import '../../services/auth_service.dart';
 import '../../services/ble_service.dart';
 import '../../services/ai_prediction_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/sync_service.dart';
 import '../../services/sms_service.dart';
+import '../../services/theme_service.dart';
 
 import '../../models/user_model.dart';
 import '../../models/telemetry_model.dart';
 import '../../models/prediction_result.dart';
 import '../../models/alert_model.dart';
 import '../../database/local_database.dart';
+import '../../core/theme/app_theme.dart';
 import '../../widgets/connection_status.dart';
 import '../../widgets/safety_status_widget.dart';
 import '../../widgets/telemetry_card.dart';
 import '../../widgets/alert_card.dart';
 import '../../widgets/battery_indicator.dart';
+import '../../widgets/deliberate_sos_button.dart';
+import '../../widgets/trend_chart.dart';
+import '../../widgets/theme_selector_dialog.dart';
 import '../auth/login_screen.dart';
 import 'device_scan_screen.dart';
-import 'telemetry_screen.dart';
 import 'worker_history_screen.dart';
 import 'emergency_screen.dart';
 
@@ -44,15 +50,19 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   StreamSubscription? _syncCountSub;
   StreamSubscription? _lastSyncSub;
   StreamSubscription? _smsSub;
+  StreamSubscription? _bleConnSub;
 
   AppUser? _user;
   Telemetry? _currentTelemetry;
   PredictionResult _currentPrediction = PredictionResult.safeDefault();
   List<AlertItem> _recentAlerts = [];
+  List<Telemetry> _historyList = [];
   bool _isBleConnected = false;
   bool _isOnline = false;
   int _pendingCount = 0;
   DateTime? _lastSyncTime;
+
+  int _navIndex = 0;
 
   @override
   void initState() {
@@ -70,13 +80,17 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
   void _setupListeners() {
     // 1. Telemetry Stream from ESP32 BLE
     _telemetrySub = _bleService.telemetryStream.listen((telemetry) async {
-      debugPrint("[WorkerDashboard] Live BLE packet: HR=${telemetry.heartRate}, SpO2=${telemetry.spo2}, Temp=${telemetry.temperature}, Gas=${telemetry.gasLevel}");
+      debugPrint(
+        "[WorkerDashboard] Live BLE packet: HR=${telemetry.heartRate}, SpO2=${telemetry.spo2}, Temp=${telemetry.temperature}, Gas=${telemetry.gasLevel}",
+      );
 
       if (_currentTelemetry == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("✅ Live BLE telemetry streaming from ${telemetry.deviceId}"),
-            backgroundColor: const Color(0xFF10B981),
+            content: Text(
+              "✅ Live BLE telemetry connected: ${telemetry.deviceId}",
+            ),
+            backgroundColor: AppTheme.safeGreen,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -95,7 +109,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           telemetry.sos) {
         NotificationService.instance.triggerSafetyAlert(
           status: prediction.status,
-          title: "⚠️ OCCUPATIONAL SAFETY ALERT: ${prediction.status.toDisplayString()}",
+          title:
+              "⚠️ OCCUPATIONAL SAFETY ALERT: ${prediction.status.toDisplayString()}",
           message: prediction.reason,
         );
 
@@ -106,8 +121,8 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           condition: telemetry.sos
               ? "EMERGENCY SOS BUTTON ACTIVATED"
               : telemetry.fallDetected
-                  ? "WORKER FALL DETECTED (ACCELEROMETER SPIKE)"
-                  : prediction.reason,
+              ? "WORKER FALL DETECTED (ACCELEROMETER SPIKE)"
+              : prediction.reason,
           telemetry: telemetry,
         );
       }
@@ -124,11 +139,13 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           _currentTelemetry = telemetry;
           _currentPrediction = prediction;
           _isBleConnected = true;
+          _historyList.insert(0, telemetry);
+          if (_historyList.length > 50) _historyList.removeLast();
         });
       }
     });
 
-    _bleService.connectionStateStream.listen((state) {
+    _bleConnSub = _bleService.connectionStateStream.listen((state) {
       if (mounted) {
         setState(() {
           _isBleConnected = state == BluetoothConnectionState.connected;
@@ -163,35 +180,30 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       }
     });
 
-    // 3. Ble Connection State
-    _bleService.connectionStateStream.listen((_) {
-      if (mounted) {
-        setState(() => _isBleConnected = _bleService.isConnected);
-      }
-    });
-
-    // 4. Online / Offline Stream
+    // 3. Online / Offline Stream
     _syncService.isOnlineStream.listen((online) {
       if (mounted) setState(() => _isOnline = online);
     });
 
-    // 5. Sync queue count stream
+    // 4. Sync queue count stream
     _syncCountSub = _syncService.pendingCountStream.listen((count) {
       if (mounted) setState(() => _pendingCount = count);
     });
 
-    // 6. Last sync timestamp stream
+    // 5. Last sync timestamp stream
     _lastSyncSub = _syncService.lastSyncTimeStream.listen((time) {
       if (mounted) setState(() => _lastSyncTime = time);
     });
 
-    // 7. SMS dispatch result stream notification
+    // 6. SMS dispatch result stream notification
     _smsSub = _smsService.dispatchStream.listen((result) {
       if (mounted && result.success && result.mode != 'SKIPPED_COOLDOWN') {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("🚨 Distress SMS sent to Supervisor (${result.recipient})"),
-            backgroundColor: const Color(0xFF10B981),
+            content: Text(
+              "🚨 Distress SMS sent to Supervisor (${result.recipient})",
+            ),
+            backgroundColor: AppTheme.safeGreen,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -201,12 +213,19 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
 
   Future<void> _loadInitialData() async {
     final workerId = _user?.workerId ?? 'W-104';
-    final alerts = await LocalDatabase.instance.getRecentAlerts(workerId, limit: 5);
+    final alerts = await LocalDatabase.instance.getRecentAlerts(
+      workerId,
+      limit: 5,
+    );
+    final history = await LocalDatabase.instance.getTelemetryHistory(
+      workerId,
+      limit: 30,
+    );
 
     if (mounted) {
       setState(() {
         _recentAlerts = alerts;
-        // Telemetry strictly comes from live ESP32 BLE stream, zero past/cached data
+        _historyList = history;
       });
     }
   }
@@ -218,55 +237,100 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
     _syncCountSub?.cancel();
     _lastSyncSub?.cancel();
     _smsSub?.cancel();
+    _bleConnSub?.cancel();
     super.dispose();
   }
 
   Future<void> _handleLogout() async {
-    await _authService.logout();
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Sign Out Confirmation"),
+        content: const Text(
+          "Are you sure you want to sign out of this device? Offline buffered records will remain safe in SQLite.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("CANCEL"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.dangerRed,
+            ),
+            child: const Text("SIGN OUT"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _authService.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
     }
+  }
+
+  void _triggerSos() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EmergencyScreen(
+          workerId: _user?.workerId ?? 'W-104',
+          workerName: _user?.name ?? 'Worker',
+          initialCause: "Deliberate SOS emergency trigger activated.",
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final telemetry = _currentTelemetry ??
-        Telemetry(
-          workerId: _user?.workerId ?? 'W-104',
-          deviceId: _bleService.connectedDeviceId ?? 'ESP32_SAFE_01',
-        );
-
-    final syncTimeStr = _lastSyncTime != null
-        ? DateFormat('hh:mm:ss a').format(_lastSyncTime!)
-        : 'Pending Sync';
-
     return Scaffold(
+      backgroundColor: AppTheme.scaffoldBg(context),
       appBar: AppBar(
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withAlpha(24),
+                color: AppTheme.primary.withAlpha(25),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF10B981).withAlpha(60)),
               ),
-              child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 16),
+              child: const Icon(
+                Icons.shield_rounded,
+                color: AppTheme.primary,
+                size: 18,
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text("SAFEGUARD", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 0.6), overflow: TextOverflow.ellipsis),
                   Text(
-                    "${_user?.workerId ?? 'W-104'} • ${_user?.name ?? 'Worker'}",
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                    "Good Day, ${_user?.name.split(' ').first ?? 'Worker'}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary(context),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    "${_user?.workerId.isNotEmpty == true ? _user!.workerId : 'W-104'} • Edge Active",
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: AppTheme.textSub(context),
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -284,507 +348,904 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
             ),
           ),
           IconButton(
-            tooltip: "SQLite Audit Log",
-            icon: const Icon(Icons.history_rounded, size: 20),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => WorkerHistoryScreen(workerId: _user?.workerId ?? 'W-104'),
-              ),
+            tooltip: "Theme",
+            icon: Icon(
+              AppTheme.isDark(context)
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
+              size: 20,
             ),
-          ),
-          IconButton(
-            tooltip: "Sign Out",
-            icon: const Icon(Icons.logout_rounded, size: 20),
-            onPressed: _handleLogout,
+            onPressed: () => ThemeSelectorDialog.show(context),
           ),
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await _syncService.syncPendingRecords();
-            await _loadInitialData();
-          },
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: IndexedStack(
+          index: _navIndex,
+          children: [
+            _buildHomeTab(),
+            _buildMonitoringTab(),
+            _buildHistoryTab(),
+            _buildSettingsTab(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _navIndex,
+        onDestinationSelected: (idx) => setState(() => _navIndex = idx),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: "Overview",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.sensors_outlined),
+            selectedIcon: Icon(Icons.sensors_rounded),
+            label: "Sensors",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history_rounded),
+            label: "History",
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings_rounded),
+            label: "Settings",
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 1: OVERVIEW / HOME ---
+  Widget _buildHomeTab() {
+    final telemetry =
+        _currentTelemetry ??
+        Telemetry(
+          workerId: _user?.workerId ?? 'W-104',
+          deviceId: _bleService.connectedDeviceId ?? 'ESP32_SAFE_01',
+        );
+
+    final syncTimeStr = _lastSyncTime != null
+        ? DateFormat('hh:mm:ss a').format(_lastSyncTime!)
+        : 'Pending Sync';
+
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = AppTheme.border(context);
+    final textSub = AppTheme.textSub(context);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _syncService.syncPendingRecords();
+        await _loadInitialData();
+      },
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: [
+          // 1. Connection Status Bar (Bluetooth, Internet, Sync Queue)
+          ConnectionStatusWidget(
+            isBleConnected: _isBleConnected,
+            isOnline: _isOnline,
+            pendingSyncCount: _pendingCount,
+            onBleTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DeviceScanScreen()),
+            ),
+            onSyncTap: () => _syncService.syncPendingRecords(),
+          ),
+          const SizedBox(height: 10),
+
+          // 2. Hardware BLE Node Strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _isBleConnected
+                    ? AppTheme.safeGreen.withAlpha(isDark ? 120 : 80)
+                    : AppTheme.warningAmber.withAlpha(isDark ? 120 : 80),
+                width: 1.2,
+              ),
+              boxShadow: [
+                if (!isDark)
+                  BoxShadow(
+                    color: Colors.black.withAlpha(4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+              ],
+            ),
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DeviceScanScreen()),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isBleConnected
+                        ? Icons.bluetooth_connected_rounded
+                        : Icons.bluetooth_searching_rounded,
+                    size: 16,
+                    color: _isBleConnected
+                        ? AppTheme.safeGreen
+                        : AppTheme.warningAmber,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _isBleConnected
+                          ? (_bleService.connectedDeviceId ?? "ESP32_SAFE_01")
+                          : "NO ESP32 CONNECTED • TAP TO SCAN",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        color: _isBleConnected
+                            ? AppTheme.safeGreen
+                            : AppTheme.warningAmber,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (_isBleConnected && _currentTelemetry != null) ...[
+                    BatteryIndicator(percentage: _currentTelemetry!.battery),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningAmber.withAlpha(20),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        "PAIR",
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.warningAmber,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 3. AI Safety Prediction Banner
+          SafetyStatusWidget(
+            status: _currentPrediction.status,
+            confidence: _currentPrediction.confidence,
+            isLarge: true,
+          ),
+          const SizedBox(height: 10),
+
+          // 4. On-Device AI Explanation Box
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _currentPrediction.status == SafetyStatus.safe
+                    ? borderColor
+                    : _currentPrediction.status.color.withAlpha(100),
+                width: 1,
+              ),
+              boxShadow: [
+                if (!isDark)
+                  BoxShadow(
+                    color: Colors.black.withAlpha(4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 14,
+                      color: _currentPrediction.status.color,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      "ON-DEVICE INFERENCE ENGINE",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: textSub,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _currentTelemetry == null
+                      ? "Waiting for live BLE telemetry stream from ESP32 wearable node..."
+                      : _currentPrediction.reason,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: AppTheme.textPrimary(context),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // 5. Deliberate SOS Emergency Button (requires 2s hold to prevent accidental triggers)
+          DeliberateSosButton(onTrigger: _triggerSos),
+          const SizedBox(height: 14),
+
+          // 6. Live Sensory Telemetry Section Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 1. Connection Status Bar (Bluetooth, Internet, Sync Queue)
-              ConnectionStatusWidget(
-                isBleConnected: _isBleConnected,
-                isOnline: _isOnline,
-                pendingSyncCount: _pendingCount,
-                onBleTap: () => Navigator.push(
+              Text(
+                "LIVE SENSORY TELEMETRY",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: textSub,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _navIndex = 1),
+                child: const Text(
+                  "DETAILED VIEW →",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 2x2 Telemetry Grid
+          Row(
+            children: [
+              Expanded(
+                child: TelemetryCard(
+                  title: "Heart Rate",
+                  value: (_currentTelemetry != null && telemetry.heartRate > 0)
+                      ? "${telemetry.heartRate}"
+                      : "--",
+                  unit: "BPM",
+                  icon: Icons.favorite_rounded,
+                  accentColor: const Color(0xFFE11D48),
+                  statusLabel:
+                      (_currentTelemetry != null && telemetry.heartRate > 0)
+                      ? (telemetry.heartRate > 100 ? "ELEVATED" : "NORMAL")
+                      : "WAITING",
+                  progressPercent:
+                      (_currentTelemetry != null && telemetry.heartRate > 0)
+                      ? (telemetry.heartRate / 160.0).clamp(0.0, 1.0)
+                      : 0.0,
+                  onTap: () => setState(() => _navIndex = 1),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TelemetryCard(
+                  title: "SpO2 Oxygen",
+                  value: (_currentTelemetry != null && telemetry.spo2 > 0)
+                      ? "${telemetry.spo2}"
+                      : "--",
+                  unit: "%",
+                  icon: Icons.water_drop_rounded,
+                  accentColor: const Color(0xFF0284C7),
+                  statusLabel: (_currentTelemetry != null && telemetry.spo2 > 0)
+                      ? (telemetry.spo2 < 95 ? "LOW O2" : "OPTIMAL")
+                      : "WAITING",
+                  progressPercent:
+                      (_currentTelemetry != null && telemetry.spo2 > 0)
+                      ? (telemetry.spo2 / 100.0).clamp(0.0, 1.0)
+                      : 0.0,
+                  onTap: () => setState(() => _navIndex = 1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: TelemetryCard(
+                  title: "Temperature",
+                  value:
+                      (_currentTelemetry != null && telemetry.temperature > 0)
+                      ? telemetry.temperature.toStringAsFixed(1)
+                      : "--",
+                  unit: "°C",
+                  icon: Icons.thermostat_rounded,
+                  accentColor:
+                      (_currentTelemetry != null &&
+                          telemetry.temperature > 37.5)
+                      ? AppTheme.warningAmber
+                      : AppTheme.safeGreen,
+                  statusLabel:
+                      (_currentTelemetry != null && telemetry.temperature > 0)
+                      ? (telemetry.temperature > 37.5
+                            ? "HIGH HEAT"
+                            : "DHT22 OK")
+                      : "WAITING",
+                  progressPercent:
+                      (_currentTelemetry != null && telemetry.temperature > 0)
+                      ? ((telemetry.temperature - 15.0) / 30.0).clamp(0.0, 1.0)
+                      : 0.0,
+                  onTap: () => setState(() => _navIndex = 1),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TelemetryCard(
+                  title: "Gas Sensor",
+                  value: _currentTelemetry != null
+                      ? "${telemetry.gasLevel}"
+                      : "--",
+                  unit: "PPM",
+                  icon: Icons.air_rounded,
+                  accentColor:
+                      _currentTelemetry != null && telemetry.gasLevel > 300
+                      ? AppTheme.dangerRed
+                      : (_currentTelemetry != null && telemetry.gasLevel > 150
+                            ? AppTheme.warningAmber
+                            : AppTheme.safeGreen),
+                  statusLabel: _currentTelemetry != null
+                      ? (telemetry.gasLevel > 300
+                            ? "HAZARDOUS"
+                            : (telemetry.gasLevel > 150 ? "ELEVATED" : "SAFE"))
+                      : "WAITING",
+                  progressPercent: _currentTelemetry != null
+                      ? (telemetry.gasLevel / 500.0).clamp(0.0, 1.0)
+                      : 0.0,
+                  onTap: () => setState(() => _navIndex = 1),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 7. Sync Health & Diagnostic Strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.cloud_done_rounded, size: 15, color: textSub),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Last Sync: $syncTimeStr",
+                      style: TextStyle(
+                        color: textSub,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                ElevatedButton(
+                  onPressed: () => _syncService.syncPendingRecords(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary.withAlpha(
+                      isDark ? 40 : 20,
+                    ),
+                    foregroundColor: AppTheme.primary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text(
+                    "SYNC NOW",
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // 8. Recent Local Alerts
+          if (_recentAlerts.isNotEmpty) ...[
+            Text(
+              "RECENT SAFETY ALERTS",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: textSub,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ..._recentAlerts.take(3).map((a) => AlertCard(alert: a)),
+            const SizedBox(height: 10),
+          ],
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 2: DETAILED SENSORS & TREND VISUALIZATION ---
+  Widget _buildMonitoringTab() {
+    final telemetry =
+        _currentTelemetry ??
+        Telemetry(
+          workerId: _user?.workerId ?? 'W-104',
+          deviceId: _bleService.connectedDeviceId ?? 'ESP32_SAFE_01',
+        );
+
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = AppTheme.border(context);
+    final textSub = AppTheme.textSub(context);
+
+    // Extract historical points from local database buffer
+    final hrPoints = _historyList
+        .where((t) => t.heartRate > 0)
+        .map((t) => t.heartRate.toDouble())
+        .toList()
+        .reversed
+        .toList();
+
+    final tempPoints = _historyList
+        .where((t) => t.temperature > 0)
+        .map((t) => t.temperature)
+        .toList()
+        .reversed
+        .toList();
+
+    final gasPoints = _historyList
+        .where((t) => t.gasLevel > 0)
+        .map((t) => t.gasLevel.toDouble())
+        .toList()
+        .reversed
+        .toList();
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      children: [
+        // ESP32 Buzzer Diagnostic Test Button
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              if (!_isBleConnected) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "⚠️ ESP32 is not connected! Tap Overview to connect first.",
+                    ),
+                    backgroundColor: AppTheme.warningAmber,
+                  ),
+                );
+                return;
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("🔊 Testing ESP32 alert buzzer on GPIO 18..."),
+                  backgroundColor: AppTheme.primary,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              await _bleService.testBuzzer();
+            },
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.volume_up_rounded,
+                    color: AppTheme.infoBlue,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "TEST ESP32 BUZZER ALARM (GPIO 18)",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                      color: AppTheme.infoBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Kinetic Motion & Fall Detection Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withAlpha(5),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "KINETIC POSTURE & FALL ANALYSIS (MPU6050)",
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: textSub,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildKineticCol(
+                    icon: Icons.directions_walk_rounded,
+                    label: "Motion State",
+                    value: _currentTelemetry != null
+                        ? telemetry.motionStatus
+                        : "WAITING",
+                    color: AppTheme.infoBlue,
+                  ),
+                  Container(width: 1, height: 36, color: borderColor),
+                  _buildKineticCol(
+                    icon: Icons.personal_injury_rounded,
+                    label: "Fall Detection",
+                    value: _currentTelemetry != null
+                        ? (telemetry.fallDetected ? "FALL SHOCK" : "CLEAR")
+                        : "--",
+                    color: _currentTelemetry != null && telemetry.fallDetected
+                        ? AppTheme.dangerRed
+                        : AppTheme.safeGreen,
+                  ),
+                  Container(width: 1, height: 36, color: borderColor),
+                  _buildKineticCol(
+                    icon: Icons.sos_rounded,
+                    label: "Hardware SOS",
+                    value: _currentTelemetry != null
+                        ? (telemetry.sos ? "TRIGGERED" : "OFF")
+                        : "--",
+                    color: _currentTelemetry != null && telemetry.sos
+                        ? AppTheme.dangerRed
+                        : AppTheme.safeGreen,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Historical Trend Charts (Real historical data from SQLite buffer)
+        Text(
+          "HISTORICAL SENSOR TRENDS",
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: textSub,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        TrendChartCard(
+          title: "Heart Rate Trend",
+          unit: "BPM",
+          dataPoints: hrPoints,
+          accentColor: const Color(0xFFE11D48),
+          subtitle: "Normal range: 60 - 100 BPM",
+        ),
+        const SizedBox(height: 12),
+
+        TrendChartCard(
+          title: "Ambient Temperature Trend",
+          unit: "°C",
+          dataPoints: tempPoints,
+          accentColor: AppTheme.safeGreen,
+          subtitle: "DHT22 environmental tracking",
+        ),
+        const SizedBox(height: 12),
+
+        TrendChartCard(
+          title: "Toxic Gas PPM Trend",
+          unit: "PPM",
+          dataPoints: gasPoints,
+          accentColor: AppTheme.warningAmber,
+          subtitle: "MQ Gas Sensor detection over time",
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildKineticCol({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withAlpha(25),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: AppTheme.textSub(context),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- TAB 3: AUDIT HISTORY ---
+  Widget _buildHistoryTab() {
+    return WorkerHistoryScreen(workerId: _user?.workerId ?? 'W-104');
+  }
+
+  // --- TAB 4: SETTINGS & PROFILE ---
+  Widget _buildSettingsTab() {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = AppTheme.border(context);
+    final textPrimary = AppTheme.textPrimary(context);
+    final textSub = AppTheme.textSub(context);
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      children: [
+        // Worker Identity Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withAlpha(5),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withAlpha(25),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppTheme.primary.withAlpha(60),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    color: AppTheme.primary,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _user?.name ?? 'Alex Rivera',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${_user?.email ?? 'worker@safeguard.io'} • ID: ${_user?.workerId ?? 'W-104'}",
+                      style: TextStyle(fontSize: 12, color: textSub),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Text(
+          "PREFERENCES & SYSTEM",
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: textSub,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Visual Theme Switcher Tile
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+          ),
+          child: Column(
+            children: [
+              ListTile(
+                leading: Icon(
+                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: AppTheme.primary,
+                ),
+                title: Text(
+                  "Visual Theme Mode",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  ThemeService.instance.themeMode == ThemeMode.light
+                      ? "Light Mode (Default)"
+                      : (ThemeService.instance.themeMode == ThemeMode.dark
+                            ? "Dark Mode"
+                            : "System Default"),
+                  style: TextStyle(fontSize: 11, color: textSub),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => ThemeSelectorDialog.show(context),
+              ),
+              Divider(color: borderColor, height: 1),
+              ListTile(
+                leading: const Icon(
+                  Icons.phone_forwarded_rounded,
+                  color: AppTheme.safeGreen,
+                ),
+                title: Text(
+                  "Supervisor SMS Contact",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  "${_smsService.supervisorPhone} • ${_smsService.autoSmsEnabled ? 'Auto-SMS Active' : 'Manual'}",
+                  style: TextStyle(fontSize: 11, color: textSub),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _showEditSupervisorPhoneDialog,
+              ),
+              Divider(color: borderColor, height: 1),
+              ListTile(
+                leading: const Icon(
+                  Icons.bluetooth_searching_rounded,
+                  color: AppTheme.infoBlue,
+                ),
+                title: Text(
+                  "ESP32 BLE Scanner",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  _isBleConnected
+                      ? "Connected to ${_bleService.connectedDeviceId}"
+                      : "No device connected",
+                  style: TextStyle(fontSize: 11, color: textSub),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const DeviceScanScreen()),
                 ),
               ),
-              const SizedBox(height: 10),
-
-              // 2. Worker & Device Identifiers Strip
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DeviceScanScreen()),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131D33),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _isBleConnected
-                            ? const Color(0xFF10B981).withAlpha(120)
-                            : const Color(0xFFF59E0B).withAlpha(120),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF94A3B8)),
-                            const SizedBox(width: 4),
-                            Text(
-                              _user?.workerId.isNotEmpty == true ? _user!.workerId : 'W-104',
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Icon(
-                                _isBleConnected ? Icons.bluetooth_connected_rounded : Icons.bluetooth_searching_rounded,
-                                size: 13,
-                                color: _isBleConnected ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  _isBleConnected
-                                      ? (_bleService.connectedDeviceId ?? "ESP32_SAFE_01")
-                                      : "NO ESP32 CONNECTED • TAP TO SCAN",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 10.5,
-                                    color: _isBleConnected ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_isBleConnected && _currentTelemetry != null) ...[
-                          const SizedBox(width: 6),
-                          BatteryIndicator(percentage: _currentTelemetry!.battery),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              // 2b. Registered Supervisor Emergency Contact Strip
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _showEditSupervisorPhoneDialog,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131D33),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF243350), width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.phone_forwarded_rounded, size: 14, color: Color(0xFF10B981)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            "Supervisor SMS: ${_smsService.supervisorPhone}",
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Colors.white),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1).withAlpha(30),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFF6366F1).withAlpha(80)),
-                          ),
-                          child: const Text(
-                            "CONFIG",
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF818CF8)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // 3. AI Safety Prediction Banner (Large Widget with on-device explanation)
-              SafetyStatusWidget(
-                status: _currentPrediction.status,
-                confidence: _currentPrediction.confidence,
-                isLarge: true,
-              ),
-              const SizedBox(height: 10),
-
-              // 4. AI Explanation Box (Human Readable Reason)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D131F),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _currentPrediction.status == SafetyStatus.safe
-                        ? const Color(0xFF1E2B3E)
-                        : _currentPrediction.status.color.withAlpha(100),
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 14,
-                          color: _currentPrediction.status.color,
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          "ON-DEVICE INFERENCE ENGINE",
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                            color: Color(0xFF8B98AD),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _currentTelemetry == null
-                          ? "Waiting for live BLE telemetry stream from ESP32..."
-                          : _currentPrediction.reason,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFFCBD5E1),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 5. Giant Physical / Virtual SOS Emergency Trigger Button
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EmergencyScreen(
-                        workerId: _user?.workerId ?? 'W-104',
-                        workerName: _user?.name ?? 'Worker',
-                        initialCause: "Manual Panic SOS triggered from worker dashboard.",
-                      ),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF385C), Color(0xFFDC143C)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFF6B81).withAlpha(120), width: 1.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFF385C).withAlpha(90),
-                        blurRadius: 18,
-                        spreadRadius: -2,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.sos_rounded, color: Colors.white, size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        "TRIGGER EMERGENCY SOS",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // 5b. Hardware Buzzer Diagnostic Test Button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () async {
-                    if (!_isBleConnected) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("⚠️ ESP32 is not connected! Tap connection strip to connect first."),
-                          backgroundColor: Color(0xFFF59E0B),
-                        ),
-                      );
-                      return;
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("🔊 Triggering ESP32 buzzer test on GPIO 18..."),
-                        backgroundColor: Color(0xFF6366F1),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    await _bleService.testBuzzer();
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF475569), width: 1),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.volume_up_rounded, color: Color(0xFF38BDF8), size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          "TEST ESP32 BUZZER (GPIO 18)",
-                          style: TextStyle(
-                            color: Color(0xFFF1F5F9),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // 6. Primary Vitals 2x2 Grid
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "LIVE SENSORY TELEMETRY",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF8B98AD),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TelemetryScreen()),
-                    ),
-                    child: const Text(
-                      "ALL SENSORS →",
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF38BDF8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TelemetryCard(
-                      title: "Temperature (DHT)",
-                      value: (_currentTelemetry != null && telemetry.temperature > 0)
-                          ? telemetry.temperature.toStringAsFixed(1)
-                          : "--",
-                      unit: "°C",
-                      icon: Icons.thermostat_rounded,
-                      accentColor: (_currentTelemetry != null && telemetry.temperature > 37.5)
-                          ? const Color(0xFFF59E0B)
-                          : const Color(0xFF10B981),
-                      statusLabel: (_currentTelemetry != null && telemetry.temperature > 0)
-                          ? (telemetry.temperature > 37.5 ? "HIGH HEAT" : "REAL DHT")
-                          : "WAITING",
-                      progressPercent: (_currentTelemetry != null && telemetry.temperature > 0)
-                          ? ((telemetry.temperature - 15.0) / 30.0).clamp(0.0, 1.0)
-                          : 0.0,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TelemetryScreen()),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TelemetryCard(
-                      title: "Humidity (DHT)",
-                      value: (_currentTelemetry != null && telemetry.humidity > 0)
-                          ? telemetry.humidity.toStringAsFixed(1)
-                          : "--",
-                      unit: "% RH",
-                      icon: Icons.water_drop_rounded,
-                      accentColor: const Color(0xFF06B6D4),
-                      statusLabel: (_currentTelemetry != null && telemetry.humidity > 0)
-                          ? (telemetry.humidity > 75 ? "HUMID" : "REAL DHT")
-                          : "WAITING",
-                      progressPercent: (_currentTelemetry != null && telemetry.humidity > 0)
-                          ? (telemetry.humidity / 100.0).clamp(0.0, 1.0)
-                          : 0.0,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TelemetryScreen()),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TelemetryCard(
-                      title: "Kinetic Motion (MPU)",
-                      value: _currentTelemetry != null ? telemetry.motionStatus : "--",
-                      unit: _currentTelemetry != null ? "${telemetry.totalG.toStringAsFixed(2)}G" : "",
-                      icon: Icons.directions_walk_rounded,
-                      accentColor: _currentTelemetry != null && telemetry.fallDetected
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFF38BDF8),
-                      statusLabel: _currentTelemetry != null
-                          ? (telemetry.fallDetected ? "FALL SHOCK" : "REAL MPU6050")
-                          : "WAITING",
-                      progressPercent: _currentTelemetry != null ? (telemetry.totalG / 3.0).clamp(0.0, 1.0) : 0.0,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TelemetryScreen()),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TelemetryCard(
-                      title: "Heart Rate",
-                      value: (_currentTelemetry != null && telemetry.heartRate > 0)
-                          ? "${telemetry.heartRate}"
-                          : "--",
-                      unit: "BPM",
-                      icon: Icons.favorite_rounded,
-                      accentColor: const Color(0xFF64748B),
-                      statusLabel: (_currentTelemetry != null && telemetry.heartRate > 0)
-                          ? "NORMAL"
-                          : (_currentTelemetry != null ? "NOT CONNECTED" : "WAITING"),
-                      progressPercent: 0.0,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TelemetryScreen()),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 7. Sync & Cloud Health Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0D131F),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF1E2B3E)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.sync_rounded, size: 14, color: Color(0xFF8B98AD)),
-                        const SizedBox(width: 6),
-                        Text(
-                          "Last Sync: $syncTimeStr",
-                          style: const TextStyle(color: Color(0xFF8B98AD), fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _syncService.syncPendingRecords(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF182335),
-                        foregroundColor: const Color(0xFF38BDF8),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: const Text("SYNC NOW", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // 8. Recent Alerts List
-              if (_recentAlerts.isNotEmpty) ...[
-                const Text(
-                  "RECENT LOCAL SAFETY ALERTS",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF8B98AD),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                ..._recentAlerts.take(3).map((a) => AlertCard(alert: a)),
-                const SizedBox(height: 10),
-              ],
-
-              const SizedBox(height: 18),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: 20),
+
+        // Sign Out Button
+        OutlinedButton.icon(
+          onPressed: _handleLogout,
+          icon: const Icon(
+            Icons.logout_rounded,
+            size: 16,
+            color: AppTheme.dangerRed,
+          ),
+          label: const Text(
+            "SIGN OUT",
+            style: TextStyle(
+              color: AppTheme.dangerRed,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: AppTheme.dangerRed.withAlpha(120),
+              width: 1.2,
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -796,19 +1257,18 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
-          backgroundColor: const Color(0xFF10172A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0xFF243350), width: 1.2),
-          ),
           title: const Row(
             children: [
-              Icon(Icons.phone_forwarded_rounded, color: Color(0xFF10B981), size: 20),
+              Icon(
+                Icons.phone_forwarded_rounded,
+                color: AppTheme.safeGreen,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
                   "Supervisor Contact",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -819,15 +1279,17 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "When distress (SOS, fall, or danger) is detected, the phone automatically transmits a distress SMS to this phone number via cellular tower (100% offline from internet).",
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                Text(
+                  "When distress is detected (SOS, fall, or acute danger), the phone transmits an SMS to this number via GSM towers (100% offline from internet).",
+                  style: TextStyle(
+                    color: AppTheme.textSub(context),
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: controller,
                   keyboardType: TextInputType.phone,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                   decoration: const InputDecoration(
                     labelText: "Supervisor Phone Number",
                     prefixIcon: Icon(Icons.phone_rounded, size: 18),
@@ -839,14 +1301,17 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text(
                     "Auto-SMS on Distress",
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     "Send SMS on SOS, Fall, Toxic Gas & Hypoxia",
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    style: TextStyle(
+                      color: AppTheme.textSub(context),
+                      fontSize: 11,
+                    ),
                   ),
                   value: autoSms,
-                  activeThumbColor: const Color(0xFF10B981),
+                  activeThumbColor: AppTheme.safeGreen,
                   onChanged: (val) => setDlgState(() => autoSms = val),
                 ),
               ],
@@ -855,7 +1320,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("CANCEL", style: TextStyle(color: Color(0xFF94A3B8))),
+              child: const Text("CANCEL"),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -869,7 +1334,7 @@ class _WorkerDashboardState extends State<WorkerDashboard> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text("Supervisor SMS contact set to $phone"),
-                        backgroundColor: const Color(0xFF10B981),
+                        backgroundColor: AppTheme.safeGreen,
                       ),
                     );
                   }

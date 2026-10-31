@@ -49,8 +49,11 @@ void main() {
       expect(prediction.confidence, greaterThanOrEqualTo(0.85));
       expect(prediction.probabilities.containsKey(SafetyStatus.safe), isTrue);
       expect(prediction.reason, contains('SAFE'));
-      expect(stopwatch.elapsedMilliseconds, lessThan(10),
-          reason: 'On-device decision tree traversal must execute in < 10ms');
+      expect(
+        stopwatch.elapsedMilliseconds,
+        lessThan(10),
+        reason: 'On-device decision tree traversal must execute in < 10ms',
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -72,9 +75,17 @@ void main() {
 
       final prediction = aiService.predict(dangerousTelemetry);
 
-      expect(prediction.status, anyOf(equals(SafetyStatus.danger), equals(SafetyStatus.emergency)));
+      expect(
+        prediction.status,
+        anyOf(equals(SafetyStatus.danger), equals(SafetyStatus.emergency)),
+      );
       expect(prediction.confidence, greaterThan(0.80));
-      expect(prediction.contributingFactors.any((f) => f.contains('gas') || f.contains('SpO2')), isTrue);
+      expect(
+        prediction.contributingFactors.any(
+          (f) => f.contains('gas') || f.contains('SpO2'),
+        ),
+        isTrue,
+      );
       expect(prediction.reason, contains('ACTION REQUIRED'));
     });
 
@@ -137,14 +148,10 @@ void main() {
     // TEST 4: Bluetooth disabled
     // -------------------------------------------------------------------------
     test('TEST 4: Bluetooth disabled - throws BleException without application crash', () async {
-      expect(
-        () async {
-          await bleService.connect('INVALID_BLUETOOTH_MAC');
-        },
-        throwsA(anything),
-      );
+      expect(() async {
+        await bleService.connect('INVALID_BLUETOOTH_MAC');
+      }, throwsA(anything));
     });
-
 
     // -------------------------------------------------------------------------
     // TEST 5: Firebase unavailable - Session persistence in SQLite
@@ -190,7 +197,9 @@ void main() {
       final unsyncedAlerts = await localDb.getUnsyncedAlerts();
 
       expect(unsyncedAlerts.any((a) => a.id == 'sos_offline_001'), isTrue);
-      final savedSos = unsyncedAlerts.firstWhere((a) => a.id == 'sos_offline_001');
+      final savedSos = unsyncedAlerts.firstWhere(
+        (a) => a.id == 'sos_offline_001',
+      );
       expect(savedSos.severity, equals('EMERGENCY'));
       expect(savedSos.synced, isFalse);
     });
@@ -198,55 +207,64 @@ void main() {
     // -------------------------------------------------------------------------
     // TEST 7: Internet restored after SOS - Marks synced
     // -------------------------------------------------------------------------
-    test('TEST 7: Internet restored after SOS - Marks local alert synced', () async {
-      final localDb = LocalDatabase.instance;
-      await localDb.markAlertSynced('sos_offline_001');
+    test(
+      'TEST 7: Internet restored after SOS - Marks local alert synced',
+      () async {
+        final localDb = LocalDatabase.instance;
+        await localDb.markAlertSynced('sos_offline_001');
 
-      final unsyncedAlerts = await localDb.getUnsyncedAlerts();
-      expect(unsyncedAlerts.any((a) => a.id == 'sos_offline_001'), isFalse);
-    });
+        final unsyncedAlerts = await localDb.getUnsyncedAlerts();
+        expect(unsyncedAlerts.any((a) => a.id == 'sos_offline_001'), isFalse);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // TEST 8: Multiple telemetry records generated offline
     // -------------------------------------------------------------------------
-    test('TEST 8: Multiple telemetry records generated offline buffer properly', () async {
-      final localDb = LocalDatabase.instance;
+    test(
+      'TEST 8: Multiple telemetry records generated offline buffer properly',
+      () async {
+        final localDb = LocalDatabase.instance;
 
-      for (int i = 0; i < 15; i++) {
-        final t = Telemetry(
-          id: 'batch_offline_$i',
-          workerId: 'W-104',
-          deviceId: 'ESP32_SAFE_01',
-          temperature: 36.5 + (i * 0.1),
-          heartRate: 75 + i,
-          spo2: 98,
-          gasLevel: 50 + (i * 5),
-          humidity: 50.0,
-          battery: 90 - i,
-          timestamp: 1727690000000 + (i * 2000),
-          synced: false,
-        );
-        await localDb.insertTelemetry(t);
-      }
+        for (int i = 0; i < 15; i++) {
+          final t = Telemetry(
+            id: 'batch_offline_$i',
+            workerId: 'W-104',
+            deviceId: 'ESP32_SAFE_01',
+            temperature: 36.5 + (i * 0.1),
+            heartRate: 75 + i,
+            spo2: 98,
+            gasLevel: 50 + (i * 5),
+            humidity: 50.0,
+            battery: 90 - i,
+            timestamp: 1727690000000 + (i * 2000),
+            synced: false,
+          );
+          await localDb.insertTelemetry(t);
+        }
 
-      final unsynced = await localDb.getUnsyncedTelemetry(limit: 50);
-      expect(unsynced.length, greaterThanOrEqualTo(15));
-    });
+        final unsynced = await localDb.getUnsyncedTelemetry(limit: 50);
+        expect(unsynced.length, greaterThanOrEqualTo(15));
+      },
+    );
 
     // -------------------------------------------------------------------------
     // TEST 9: Offline records synchronize after internet returns
     // -------------------------------------------------------------------------
-    test('TEST 9: Offline records synchronize and transition synced state', () async {
-      final localDb = LocalDatabase.instance;
+    test(
+      'TEST 9: Offline records synchronize and transition synced state',
+      () async {
+        final localDb = LocalDatabase.instance;
 
-      for (int i = 0; i < 5; i++) {
-        await localDb.markTelemetrySynced('batch_offline_$i');
-      }
+        for (int i = 0; i < 5; i++) {
+          await localDb.markTelemetrySynced('batch_offline_$i');
+        }
 
-      final unsynced = await localDb.getUnsyncedTelemetry(limit: 50);
-      expect(unsynced.any((t) => t.id == 'batch_offline_0'), isFalse);
-      expect(unsynced.any((t) => t.id == 'batch_offline_1'), isFalse);
-    });
+        final unsynced = await localDb.getUnsyncedTelemetry(limit: 50);
+        expect(unsynced.any((t) => t.id == 'batch_offline_0'), isFalse);
+        expect(unsynced.any((t) => t.id == 'batch_offline_1'), isFalse);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // TEST 10: Duplicate synchronization attempt (Idempotency)
@@ -262,20 +280,23 @@ void main() {
     // -------------------------------------------------------------------------
     // TEST 11: Worker login
     // -------------------------------------------------------------------------
-    test('TEST 11: Worker login correctly resolves Worker role and properties', () {
-      final user = AppUser.fromJson({
-        'uid': 'usr_worker_01',
-        'email': 'worker@safety.io',
-        'name': 'Devon Worker',
-        'role': 'worker',
-        'workerId': 'W-104',
-      });
+    test(
+      'TEST 11: Worker login correctly resolves Worker role and properties',
+      () {
+        final user = AppUser.fromJson({
+          'uid': 'usr_worker_01',
+          'email': 'worker@safety.io',
+          'name': 'Devon Worker',
+          'role': 'worker',
+          'workerId': 'W-104',
+        });
 
-      expect(user.role, equals(UserRole.worker));
-      expect(user.isWorker, isTrue);
-      expect(user.isSupervisor, isFalse);
-      expect(user.workerId, equals('W-104'));
-    });
+        expect(user.role, equals(UserRole.worker));
+        expect(user.isWorker, isTrue);
+        expect(user.isSupervisor, isFalse);
+        expect(user.workerId, equals('W-104'));
+      },
+    );
 
     // -------------------------------------------------------------------------
     // TEST 12: Supervisor login
@@ -296,19 +317,23 @@ void main() {
     // -------------------------------------------------------------------------
     // TEST 13: Worker attempts supervisor screen - Role boundary protection
     // -------------------------------------------------------------------------
-    test('TEST 13: Worker role is prevented from supervisor privilege checks', () {
-      final worker = AppUser(
-        uid: 'w_01',
-        email: 'worker@safety.io',
-        name: 'Worker 1',
-        role: UserRole.worker,
-        workerId: 'W-104',
-      );
+    test(
+      'TEST 13: Worker role is prevented from supervisor privilege checks',
+      () {
+        final worker = AppUser(
+          uid: 'w_01',
+          email: 'worker@safety.io',
+          name: 'Worker 1',
+          role: UserRole.worker,
+          workerId: 'W-104',
+        );
 
-      bool canAccessSupervisorConsole(AppUser user) => user.role == UserRole.supervisor;
+        bool canAccessSupervisorConsole(AppUser user) =>
+            user.role == UserRole.supervisor;
 
-      expect(canAccessSupervisorConsole(worker), isFalse);
-    });
+        expect(canAccessSupervisorConsole(worker), isFalse);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // TEST 14: Supervisor views worker and acknowledges incident

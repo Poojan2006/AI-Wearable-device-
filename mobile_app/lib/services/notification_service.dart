@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import '../models/prediction_result.dart';
 import '../core/utils/sound_haptic_helper.dart';
 
@@ -20,10 +21,10 @@ class NotificationService {
 
     const DarwinInitializationSettings darwinSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const InitializationSettings initSettings = InitializationSettings(
       android: androidSettings,
@@ -41,11 +42,11 @@ class NotificationService {
     // Request permissions for Android 13+
     _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
 
     _isInitialized = true;
-
   }
 
   Future<void> triggerSafetyAlert({
@@ -92,16 +93,17 @@ class NotificationService {
       channelName = 'Warning Notifications';
     }
 
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: 'Occupational safety and hazard alerts',
-      importance: importance,
-      priority: priority,
-      playSound: true,
-      enableVibration: true,
-      fullScreenIntent: status == SafetyStatus.emergency,
-    );
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          channelId,
+          channelName,
+          channelDescription: 'Occupational safety and hazard alerts',
+          importance: importance,
+          priority: priority,
+          playSound: true,
+          enableVibration: true,
+          fullScreenIntent: status == SafetyStatus.emergency,
+        );
 
     const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -121,6 +123,5 @@ class NotificationService {
       body: message,
       notificationDetails: notificationDetails,
     );
-
   }
 }

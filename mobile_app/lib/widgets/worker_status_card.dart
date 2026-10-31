@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../repositories/supervisor_repository.dart';
 import '../models/prediction_result.dart';
+import '../core/theme/app_theme.dart';
 import 'safety_status_widget.dart';
 import 'battery_indicator.dart';
 
@@ -18,29 +20,39 @@ class WorkerStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = SafetyStatus.fromString(worker.status);
-    final timeStr = DateFormat('hh:mm:ss a').format(
-      DateTime.fromMillisecondsSinceEpoch(worker.lastUpdated),
-    );
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = status == SafetyStatus.safe
+        ? AppTheme.border(context)
+        : status.color.withAlpha(isDark ? 120 : 80);
+    final timeStr = DateFormat('hh:mm a')
+        .format(DateTime.fromMillisecondsSinceEpoch(worker.lastUpdated));
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(14),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: status == SafetyStatus.safe
-                ? const Color(0xFF334155)
-                : status.color.withAlpha(128),
-            width: status == SafetyStatus.safe ? 1 : 1.5,
+            color: borderColor,
+            width: status == SafetyStatus.safe ? 1 : 1.4,
           ),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withAlpha(5),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Column(
           children: [
-            // Top Row: Name + Safety Status Badge
+            // Top Row: Avatar + Name + Safety Status Badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -48,10 +60,10 @@ class WorkerStatusCard extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: status.color.withAlpha(38),
+                          color: status.color.withAlpha(isDark ? 36 : 22),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -65,7 +77,7 @@ class WorkerStatusCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,18 +86,18 @@ class WorkerStatusCard extends StatelessWidget {
                             Text(
                               worker.name,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary(context),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 13,
+                                fontSize: 13.5,
                               ),
                             ),
                             Text(
                               "ID: ${worker.workerId} • ${worker.deviceId}",
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 10,
+                              style: TextStyle(
+                                color: AppTheme.textSub(context),
+                                fontSize: 10.5,
                               ),
                             ),
                           ],
@@ -94,12 +106,12 @@ class WorkerStatusCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 SafetyStatusWidget(status: status),
               ],
             ),
             const SizedBox(height: 10),
-            const Divider(color: Color(0xFF334155), height: 1),
+            Divider(color: AppTheme.border(context), height: 1),
             const SizedBox(height: 8),
 
             // Bottom Row: Battery, Location, Last Updated
@@ -112,22 +124,43 @@ class WorkerStatusCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFF94A3B8)),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 12,
+                        color: AppTheme.textSub(context),
+                      ),
                       const SizedBox(width: 2),
                       Flexible(
                         child: Text(
-                          "${worker.latitude.toStringAsFixed(2)}, ${worker.longitude.toStringAsFixed(2)}",
+                          "${worker.latitude.toStringAsFixed(3)}, ${worker.longitude.toStringAsFixed(3)}",
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                          style: TextStyle(
+                            color: AppTheme.textSub(context),
+                            fontSize: 10.5,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  timeStr,
-                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 11,
+                      color: AppTheme.textSubMuted(context),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        color: AppTheme.textSubMuted(context),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

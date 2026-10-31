@@ -41,10 +41,13 @@ class Telemetry {
     this.synced = false,
     this.syncAttemptCount = 0,
     this.aiStatus = 'SAFE',
-  })  : id = id ?? const Uuid().v4(),
-        timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
+  }) : id = id ?? const Uuid().v4(),
+       timestamp = timestamp ?? DateTime.now().millisecondsSinceEpoch;
 
-  factory Telemetry.fromJson(Map<String, dynamic> json, {String? workerIdOverride}) {
+  factory Telemetry.fromJson(
+    Map<String, dynamic> json, {
+    String? workerIdOverride,
+  }) {
     // Robust parser that never crashes on malformed/missing fields
     double parseDouble(dynamic val, double fallback) {
       if (val == null) return fallback;
@@ -176,7 +179,9 @@ class Telemetry {
       motionStatus: map['motion_status']?.toString() ?? 'ACTIVE',
       fallDetected: (map['fall_detected'] as num?)?.toInt() == 1,
       sos: (map['sos'] as num?)?.toInt() == 1,
-      timestamp: (map['timestamp'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch,
+      timestamp:
+          (map['timestamp'] as num?)?.toInt() ??
+          DateTime.now().millisecondsSinceEpoch,
       synced: (map['synced'] as num?)?.toInt() == 1,
       syncAttemptCount: (map['sync_attempt_count'] as num?)?.toInt() ?? 0,
       aiStatus: map['ai_status']?.toString() ?? 'SAFE',

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import '../../core/theme/app_theme.dart';
+import '../../widgets/theme_selector_dialog.dart';
 import '../worker/worker_dashboard.dart';
 import '../supervisor/supervisor_dashboard.dart';
 import 'register_screen.dart';
@@ -37,8 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final user = await AuthService.instance.login(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
       if (!mounted) return;
@@ -67,141 +70,159 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _emailController.text = email;
       _passwordController.text = pass;
+      _errorMessage = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     final isWorker = _emailController.text.contains('worker');
+    final textPrimary = AppTheme.textPrimary(context);
+    final textSub = AppTheme.textSub(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080B11),
+      backgroundColor: AppTheme.scaffoldBg(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: "Change Theme",
+            icon: Icon(
+              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              color: textSub,
+            ),
+            onPressed: () => ThemeSelectorDialog.show(context),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Minimalist Luminous Emblem
+                  // App Brand Logo & Name
                   Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Soft outer glow halo
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF10E7A0).withAlpha(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF10E7A0).withAlpha(35),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withAlpha(isDark ? 35 : 20),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primary.withAlpha(isDark ? 90 : 60),
+                          width: 1.5,
                         ),
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFF152238), Color(0xFF0D1420)],
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF10E7A0).withAlpha(120),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(34),
-                            child: Image.asset(
-                              'assets/images/app_logo.png',
-                              width: 68,
-                              height: 68,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => const Center(
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(36),
+                        child: Image.asset(
+                          'assets/images/app_logo.png',
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
                                 child: Icon(
-                                  Icons.security_rounded,
-                                  size: 32,
-                                  color: Color(0xFF10E7A0),
+                                  Icons.health_and_safety_rounded,
+                                  size: 38,
+                                  color: AppTheme.primary,
                                 ),
                               ),
-                            ),
-                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                  const Text(
+                  Text(
                     "SAFEGUARD OS",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 2.5,
-                      color: Colors.white,
+                      letterSpacing: 2.0,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    "Autonomous Edge Safety & Telemetry",
+                  Text(
+                    "Worker Safety & Vital Monitoring",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF8B98AD),
+                      fontSize: 13,
+                      color: textSub,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 28),
 
-                  // Segmented Role Selector
+                  // Segmented Role Selector Card
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F1523),
+                      color: isDark ? const Color(0xFF131B2E) : Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF1F2B3E)),
+                      border: Border.all(color: AppTheme.border(context)),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(
+                            color: Colors.black.withAlpha(6),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                      ],
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () => _quickFill('worker@safeguard.io', 'SafetyPass123!'),
+                            onTap: () => _quickFill(
+                              'worker@safeguard.io',
+                              'SafetyPass123!',
+                            ),
                             borderRadius: BorderRadius.circular(12),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: isWorker ? const Color(0xFF10E7A0).withAlpha(28) : Colors.transparent,
+                                color: isWorker
+                                    ? AppTheme.primary.withAlpha(
+                                        isDark ? 40 : 25,
+                                      )
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
-                                border: isWorker ? Border.all(color: const Color(0xFF10E7A0).withAlpha(120)) : null,
+                                border: isWorker
+                                    ? Border.all(
+                                        color: AppTheme.primary,
+                                        width: 1.2,
+                                      )
+                                    : null,
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.engineering_rounded,
-                                    size: 16,
-                                    color: isWorker ? const Color(0xFF10E7A0) : const Color(0xFF8B98AD),
+                                    size: 17,
+                                    color: isWorker
+                                        ? AppTheme.primary
+                                        : textSub,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     "Field Worker",
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12.5,
                                       fontWeight: FontWeight.w800,
-                                      color: isWorker ? Colors.white : const Color(0xFF8B98AD),
+                                      color: isWorker ? textPrimary : textSub,
                                     ),
                                   ),
                                 ],
@@ -211,30 +232,45 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         Expanded(
                           child: InkWell(
-                            onTap: () => _quickFill('supervisor@safeguard.io', 'SafetyPass123!'),
+                            onTap: () => _quickFill(
+                              'supervisor@safeguard.io',
+                              'SafetyPass123!',
+                            ),
                             borderRadius: BorderRadius.circular(12),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: !isWorker ? const Color(0xFF38BDF8).withAlpha(28) : Colors.transparent,
+                                color: !isWorker
+                                    ? AppTheme.secondary.withAlpha(
+                                        isDark ? 40 : 25,
+                                      )
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
-                                border: !isWorker ? Border.all(color: const Color(0xFF38BDF8).withAlpha(120)) : null,
+                                border: !isWorker
+                                    ? Border.all(
+                                        color: AppTheme.secondary,
+                                        width: 1.2,
+                                      )
+                                    : null,
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.admin_panel_settings_rounded,
-                                    size: 16,
-                                    color: !isWorker ? const Color(0xFF38BDF8) : const Color(0xFF8B98AD),
+                                    size: 17,
+                                    color: !isWorker
+                                        ? AppTheme.secondary
+                                        : textSub,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     "Supervisor",
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12.5,
                                       fontWeight: FontWeight.w800,
-                                      color: !isWorker ? Colors.white : const Color(0xFF8B98AD),
+                                      color: !isWorker ? textPrimary : textSub,
                                     ),
                                   ),
                                 ],
@@ -247,22 +283,36 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Error Box if any
                   if (_errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF4D4D).withAlpha(24),
+                        color: AppTheme.dangerRed.withAlpha(isDark ? 30 : 18),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFFF4D4D).withAlpha(90)),
+                        border: Border.all(
+                          color: AppTheme.dangerRed.withAlpha(90),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: Color(0xFFFF4D4D), size: 16),
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppTheme.dangerRed,
+                            size: 17,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(color: Color(0xFFFF4D4D), fontSize: 11),
+                              style: const TextStyle(
+                                color: AppTheme.dangerRed,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -275,13 +325,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: textPrimary, fontSize: 13.5),
+                    decoration: InputDecoration(
                       labelText: "Identity Email",
-                      prefixIcon: Icon(Icons.alternate_email_rounded, size: 18, color: Color(0xFF8B98AD)),
+                      hintText: "worker@safeguard.io",
+                      prefixIcon: Icon(
+                        Icons.mail_outline_rounded,
+                        size: 18,
+                        color: textSub,
+                      ),
                     ),
-                    validator: (v) =>
-                        v == null || !v.contains('@') ? 'Enter a valid industrial email' : null,
+                    validator: (v) => v == null || !v.contains('@')
+                        ? 'Enter a valid corporate email'
+                        : null,
                   ),
                   const SizedBox(height: 14),
 
@@ -289,69 +345,94 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: textPrimary, fontSize: 13.5),
                     decoration: InputDecoration(
                       labelText: "Password",
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF8B98AD)),
+                      prefixIcon: Icon(
+                        Icons.lock_outline_rounded,
+                        size: 18,
+                        color: textSub,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           size: 18,
-                          color: const Color(0xFF8B98AD),
+                          color: textSub,
                         ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
-                    validator: (v) =>
-                        v == null || v.length < 6 ? 'Password must be at least 6 characters' : null,
+                    validator: (v) => v == null || v.length < 6
+                        ? 'Password must be at least 6 characters'
+                        : null,
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
 
-                  // Login Button
+                  // Sign In Button
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isWorker ? const Color(0xFF10E7A0) : const Color(0xFF38BDF8),
-                      foregroundColor: const Color(0xFF041C12),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      backgroundColor: isWorker
+                          ? AppTheme.primary
+                          : AppTheme.secondary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       elevation: 0,
                     ),
                     child: _isLoading
                         ? const SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : Text(
-                            isWorker ? "SIGN IN AS FIELD WORKER" : "ACCESS COMMAND CONSOLE",
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
+                            isWorker
+                                ? "SIGN IN AS FIELD WORKER"
+                                : "SIGN IN AS SUPERVISOR",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
 
                   // Register link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        "New operative? ",
-                        style: TextStyle(color: Color(0xFF8B98AD), fontSize: 12),
+                      Text(
+                        "New personnel? ",
+                        style: TextStyle(color: textSub, fontSize: 12.5),
                       ),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const RegisterScreen(),
+                            ),
                           );
                         },
                         child: Text(
-                          "Enroll Credentials",
+                          "Enroll Account",
                           style: TextStyle(
-                            color: isWorker ? const Color(0xFF10E7A0) : const Color(0xFF38BDF8),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
+                            color: isWorker
+                                ? AppTheme.primary
+                                : AppTheme.secondary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5,
                           ),
                         ),
                       ),

@@ -183,16 +183,15 @@ class SupervisorRepository {
     return FirebaseDatabase.instanceFor(
       app: Firebase.app(),
       databaseURL: AppConstants.rtdbUrl,
-    )
-        .ref('${AppConstants.rtdbTelemetry}/$workerId/latest')
-        .onValue
-        .map((event) {
-          if (event.snapshot.exists && event.snapshot.value is Map) {
-            final map = Map<String, dynamic>.from(event.snapshot.value as Map);
-            return Telemetry.fromJson(map);
-          }
-          return null;
-        });
+    ).ref('${AppConstants.rtdbTelemetry}/$workerId/latest').onValue.map((
+      event,
+    ) {
+      if (event.snapshot.exists && event.snapshot.value is Map) {
+        final map = Map<String, dynamic>.from(event.snapshot.value as Map);
+        return Telemetry.fromJson(map);
+      }
+      return null;
+    });
   }
 
   Future<void> acknowledgeAlert(String alertId) async {
@@ -205,9 +204,9 @@ class SupervisorRepository {
         await FirebaseDatabase.instanceFor(
           app: Firebase.app(),
           databaseURL: AppConstants.rtdbUrl,
-        )
-            .ref('${AppConstants.rtdbAlerts}/$alertId')
-            .update({'acknowledged': true});
+        ).ref('${AppConstants.rtdbAlerts}/$alertId').update({
+          'acknowledged': true,
+        });
       } catch (_) {}
     }
 

@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../services/sync_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/sms_service.dart';
@@ -7,6 +9,7 @@ import '../../services/ble_service.dart';
 import '../../models/alert_model.dart';
 import '../../models/prediction_result.dart';
 import '../../core/utils/sound_haptic_helper.dart';
+import '../../core/theme/app_theme.dart';
 
 class EmergencyScreen extends StatefulWidget {
   final String workerId;
@@ -74,7 +77,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
     final res = await SmsService.instance.sendDistressSms(
       workerId: widget.workerId,
       workerName: widget.workerName,
-      condition: widget.initialCause ?? "Manual SOS distress panic button depressed",
+      condition:
+          widget.initialCause ?? "Manual SOS distress panic button depressed",
       force: force,
     );
 
@@ -83,11 +87,13 @@ class _EmergencyScreenState extends State<EmergencyScreen>
         _isSendingSms = false;
         _isSmsDispatched = res.success;
         if (res.success) {
-          _smsMessage = "SMS Dispatched to Supervisor (${SmsService.instance.supervisorPhone})";
+          _smsMessage =
+              "SMS Dispatched to Supervisor (${SmsService.instance.supervisorPhone})";
         } else if (res.mode == 'DISABLED') {
           _smsMessage = "Auto-SMS disabled in settings.";
         } else {
-          _smsMessage = "SMS: ${res.mode} -> ${SmsService.instance.supervisorPhone}";
+          _smsMessage =
+              "SMS: ${res.mode} -> ${SmsService.instance.supervisorPhone}";
         }
       });
     }
@@ -135,8 +141,8 @@ class _EmergencyScreenState extends State<EmergencyScreen>
             center: Alignment(0, -0.3),
             radius: 1.2,
             colors: [
-              Color(0xFF3B0712), // Deep crimson core
-              Color(0xFF180306), // Outer dark space
+              Color(0xFF450A0A), // Deep crimson
+              Color(0xFF1C0505),
             ],
           ),
         ),
@@ -148,16 +154,26 @@ class _EmergencyScreenState extends State<EmergencyScreen>
               children: [
                 // Header Protocol Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF43F5E).withAlpha(30),
+                    color: AppTheme.dangerRed.withAlpha(40),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFF43F5E).withAlpha(120), width: 1.2),
+                    border: Border.all(
+                      color: AppTheme.dangerRed.withAlpha(120),
+                      width: 1.2,
+                    ),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Color(0xFFF43F5E), size: 16),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -165,7 +181,7 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            fontSize: 10.5,
+                            fontSize: 11,
                             letterSpacing: 0.6,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -184,13 +200,13 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const RadialGradient(
-                        colors: [Color(0xFFF43F5E), Color(0xFFBE123C)],
+                        colors: [Color(0xFFEF4444), Color(0xFFB91C1C)],
                       ),
-                      border: Border.all(color: const Color(0xFFFF6484), width: 2),
+                      border: Border.all(color: Colors.white38, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFF43F5E).withAlpha(140),
-                          blurRadius: 45,
+                          color: const Color(0xFFEF4444).withAlpha(140),
+                          blurRadius: 40,
                           spreadRadius: 8,
                         ),
                       ],
@@ -199,7 +215,11 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.emergency_rounded, color: Colors.white, size: 68),
+                          Icon(
+                            Icons.emergency_rounded,
+                            color: Colors.white,
+                            size: 68,
+                          ),
                           SizedBox(height: 4),
                           Text(
                             "SOS ACTIVE",
@@ -220,20 +240,12 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF220B12), Color(0xFF130508)],
-                    ),
+                    color: Colors.black.withAlpha(80),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFF43F5E).withAlpha(80), width: 1.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(80),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: AppTheme.dangerRed.withAlpha(80),
+                      width: 1.2,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,14 +266,21 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF43F5E).withAlpha(35),
+                              color: AppTheme.dangerRed.withAlpha(50),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text(
                               "PRIORITY 1",
-                              style: TextStyle(color: Color(0xFFF43F5E), fontSize: 10, fontWeight: FontWeight.w900),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ],
@@ -269,11 +288,16 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                       const SizedBox(height: 6),
                       Text(
                         "Cause: ${widget.initialCause ?? 'Manual Panic Activation'}",
-                        style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 13, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          color: Color(0xFFE2E8F0),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      const Divider(color: Color(0x33F43F5E), height: 1),
+                      const Divider(color: Colors.white24, height: 1),
                       const SizedBox(height: 10),
+
                       // 1. Cellular SMS status (Works 100% offline via GSM)
                       Row(
                         children: [
@@ -281,9 +305,11 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             _isSendingSms
                                 ? Icons.sync_rounded
                                 : _isSmsDispatched
-                                    ? Icons.sms_rounded
-                                    : Icons.sms_failed_rounded,
-                            color: _isSmsDispatched ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                                ? Icons.sms_rounded
+                                : Icons.sms_failed_rounded,
+                            color: _isSmsDispatched
+                                ? AppTheme.safeGreen
+                                : AppTheme.infoBlue,
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -291,7 +317,9 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             child: Text(
                               _smsMessage,
                               style: TextStyle(
-                                color: _isSmsDispatched ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                                color: _isSmsDispatched
+                                    ? AppTheme.safeGreen
+                                    : const Color(0xFF7DD3FC),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -304,7 +332,10 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                               onTap: () => _dispatchEmergencySms(force: true),
                               borderRadius: BorderRadius.circular(6),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withAlpha(20),
                                   borderRadius: BorderRadius.circular(6),
@@ -312,19 +343,28 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                                 ),
                                 child: const Text(
                                   "RE-SEND",
-                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
+
                       // 2. Cloud DB stream status
                       Row(
                         children: [
                           Icon(
-                            _isDispatched ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-                            color: _isDispatched ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                            _isDispatched
+                                ? Icons.cloud_done_rounded
+                                : Icons.cloud_off_rounded,
+                            color: _isDispatched
+                                ? AppTheme.safeGreen
+                                : AppTheme.warningAmber,
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -332,7 +372,9 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                             child: Text(
                               _dispatchMessage,
                               style: TextStyle(
-                                color: _isDispatched ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                color: _isDispatched
+                                    ? AppTheme.safeGreen
+                                    : AppTheme.warningAmber,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -346,15 +388,17 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                   ),
                 ),
 
-                // Actions
+                // Cancel Button
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       label: const Text(
                         "CANCEL EMERGENCY / FALSE ALARM",
                         style: TextStyle(
@@ -366,9 +410,14 @@ class _EmergencyScreenState extends State<EmergencyScreen>
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: Colors.white.withAlpha(120), width: 1.2),
+                        side: const BorderSide(
+                          color: Colors.white54,
+                          width: 1.2,
+                        ),
                         backgroundColor: Colors.white.withAlpha(15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ],

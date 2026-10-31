@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class TelemetryCard extends StatelessWidget {
   final String title;
   final String value;
@@ -24,56 +26,55 @@ class TelemetryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderColor = AppTheme.border(context);
+    final textPrimary = AppTheme.textPrimary(context);
+    final textSub = AppTheme.textSub(context);
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              accentColor.withAlpha(30),
-              const Color(0xFF131C30),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: accentColor.withAlpha(55), width: 1.2),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor, width: 1),
           boxShadow: [
-            BoxShadow(
-              color: accentColor.withAlpha(20),
-              blurRadius: 14,
-              spreadRadius: -2,
-              offset: const Offset(0, 4),
-            ),
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withAlpha(6),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Top row: Glowing Icon container + Status Pill
+            // Top row: Pastel Icon Container + Status Pill
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: accentColor.withAlpha(32),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: accentColor.withAlpha(70), width: 1),
+                    color: accentColor.withAlpha(isDark ? 36 : 24),
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: accentColor, size: 16),
+                  child: Icon(icon, color: accentColor, size: 18),
                 ),
-                const SizedBox(width: 6),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: accentColor.withAlpha(28),
-                      borderRadius: BorderRadius.circular(7),
-                      border: Border.all(color: accentColor.withAlpha(60), width: 1),
+                      color: accentColor.withAlpha(isDark ? 28 : 20),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       statusLabel,
@@ -81,16 +82,16 @@ class TelemetryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: accentColor,
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             // Value + Unit
             FittedBox(
@@ -102,22 +103,24 @@ class TelemetryCard extends StatelessWidget {
                 children: [
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: textPrimary,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white.withAlpha(160),
+                  if (unit.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: textSub,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -127,22 +130,23 @@ class TelemetryCard extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
+              style: TextStyle(
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF94A3B8),
+                color: textSub,
               ),
             ),
 
-            // Progress bar if available
+            // Optional mini-progress bar
             if (progressPercent != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progressPercent!.clamp(0.0, 1.0),
                   minHeight: 4,
-                  backgroundColor: Colors.white.withAlpha(15),
+                  backgroundColor: (isDark ? Colors.white : Colors.black)
+                      .withAlpha(14),
                   valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                 ),
               ),
